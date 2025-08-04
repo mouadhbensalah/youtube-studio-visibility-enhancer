@@ -45,47 +45,67 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleBatchOperationStart(data, sender) {
   const { videoCount, operation } = data;
   
-  // Show notification if enabled
-  const settings = await getSettings();
-  if (settings.showNotifications) {
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'icon48.png',
-      title: 'YouTube Visibility Enhancer',
-      message: `Starting batch operation: ${operation} on ${videoCount} videos`
-    });
+  // Show notification if enabled and available
+  try {
+    const settings = await getSettings();
+    if (settings.showNotifications && chrome.notifications) {
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>',
+        title: 'YouTube Visibility Enhancer',
+        message: `Starting batch operation: ${operation} on ${videoCount} videos`
+      });
+    }
+  } catch (error) {
+    console.log('Notifications not available in development mode');
   }
   
-  // Update badge
-  chrome.action.setBadgeText({
-    text: videoCount.toString(),
-    tabId: sender.tab.id
-  });
-  
-  chrome.action.setBadgeBackgroundColor({
-    color: '#1976d2',
-    tabId: sender.tab.id
-  });
+  // Update badge if available
+  try {
+    if (chrome.action) {
+      chrome.action.setBadgeText({
+        text: videoCount.toString(),
+        tabId: sender.tab.id
+      });
+      
+      chrome.action.setBadgeBackgroundColor({
+        color: '#1976d2',
+        tabId: sender.tab.id
+      });
+    }
+  } catch (error) {
+    console.log('Badge API not available in development mode');
+  }
 }
 
 async function handleBatchOperationComplete(data, sender) {
   const { processedCount, successCount, errorCount } = data;
   
-  // Clear badge
-  chrome.action.setBadgeText({
-    text: '',
-    tabId: sender.tab.id
-  });
+  // Clear badge if available
+  try {
+    if (chrome.action) {
+      chrome.action.setBadgeText({
+        text: '',
+        tabId: sender.tab.id
+      });
+    }
+  } catch (error) {
+    console.log('Badge API not available in development mode');
+  }
   
-  // Show completion notification
-  const settings = await getSettings();
-  if (settings.showNotifications) {
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'icon48.png',
-      title: 'Batch Operation Complete',
-      message: `Processed ${processedCount} videos. ${successCount} successful, ${errorCount} errors.`
-    });
+  // Show completion notification if available
+  try {
+    const settings = await getSettings();
+    if (settings.showNotifications && chrome.notifications) {
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>',
+        title: 'Batch Operation Complete',
+        message: `Processed ${processedCount} videos. ${successCount} successful, ${errorCount} errors.`
+      });
+    }
+  } catch (error) {
+    console.log('Notifications not available in development mode');
   }
 }
 
@@ -135,50 +155,54 @@ async function getVisibilityHistory() {
   });
 }
 
-// Context menu for quick actions
-chrome.contextMenus.create({
-  id: 'quick-visibility',
-  title: 'Quick Visibility Change',
-  contexts: ['page'],
-  documentUrlPatterns: ['https://studio.youtube.com/*']
-});
+// Context menu for quick actions (with error handling)
+try {
+  chrome.contextMenus.create({
+    id: 'quick-visibility',
+    title: 'Quick Visibility Change',
+    contexts: ['page'],
+    documentUrlPatterns: ['https://studio.youtube.com/*']
+  });
 
-chrome.contextMenus.create({
-  id: 'set-private',
-  parentId: 'quick-visibility',
-  title: 'Set to Private',
-  contexts: ['page']
-});
+  chrome.contextMenus.create({
+    id: 'set-private',
+    parentId: 'quick-visibility',
+    title: 'Set to Private',
+    contexts: ['page']
+  });
 
-chrome.contextMenus.create({
-  id: 'set-unlisted',
-  parentId: 'quick-visibility',
-  title: 'Set to Unlisted',
-  contexts: ['page']
-});
+  chrome.contextMenus.create({
+    id: 'set-unlisted',
+    parentId: 'quick-visibility',
+    title: 'Set to Unlisted',
+    contexts: ['page']
+  });
 
-chrome.contextMenus.create({
-  id: 'set-public',
-  parentId: 'quick-visibility',
-  title: 'Set to Public',
-  contexts: ['page']
-});
+  chrome.contextMenus.create({
+    id: 'set-public',
+    parentId: 'quick-visibility',
+    title: 'Set to Public',
+    contexts: ['page']
+  });
 
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  const visibilityMap = {
-    'set-private': 'PRIVATE',
-    'set-unlisted': 'UNLISTED',
-    'set-public': 'PUBLIC'
-  };
-  
-  const visibility = visibilityMap[info.menuItemId];
-  if (visibility) {
-    chrome.tabs.sendMessage(tab.id, {
-      type: 'CONTEXT_MENU_VISIBILITY_CHANGE',
-      visibility: visibility
-    });
-  }
-});
+  chrome.contextMenus.onClicked.addListener((info, tab) => {
+    const visibilityMap = {
+      'set-private': 'PRIVATE',
+      'set-unlisted': 'UNLISTED',
+      'set-public': 'PUBLIC'
+    };
+    
+    const visibility = visibilityMap[info.menuItemId];
+    if (visibility) {
+      chrome.tabs.sendMessage(tab.id, {
+        type: 'CONTEXT_MENU_VISIBILITY_CHANGE',
+        visibility: visibility
+      });
+    }
+  });
+} catch (error) {
+  console.log('Context menus not available in development mode');
+}
 
 // Analytics and usage tracking (privacy-friendly)
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
