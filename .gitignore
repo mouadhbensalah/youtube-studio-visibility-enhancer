@@ -1,0 +1,19 @@
+# Development files
+.DS_Store
+Thumbs.db
+*.log
+
+# Chrome extension packaging
+*.crx
+*.pem
+web-store/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+tmp/
+temp/
