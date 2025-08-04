@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouTube Visibility Enhancer</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        width: 350px;
+        min-height: 400px;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .header {
+        padding: 20px;
+        text-align: center;
+        background: rgba(0, 0, 0, 0.1);
+      }
+
+      .header h1 {
+        font-size: 18px;
+        margin-bottom: 8px;
+      }
+
+      .header p {
+        font-size: 13px;
+        opacity: 0.9;
+      }
+
+      .content {
+        padding: 20px;
+      }
+
+      .stats-section {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 20px;
+      }
+
+      .stats-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .stat-item {
+        text-align: center;
+      }
+
+      .stat-number {
+        font-size: 24px;
+        font-weight: bold;
+        color: #4caf50;
+      }
+
+      .stat-label {
+        font-size: 12px;
+        opacity: 0.8;
+        margin-top: 4px;
+      }
+
+      .shortcuts-section {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 20px;
+      }
+
+      .shortcut-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .shortcut-item:last-child {
+        border-bottom: none;
+      }
+
+      .shortcut-key {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+      }
+
+      .settings-section {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 16px;
+      }
+
+      .setting-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+      }
+
+      .toggle-switch {
+        position: relative;
+        width: 44px;
+        height: 24px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+
+      .toggle-switch.active {
+        background: #4caf50;
+      }
+
+      .toggle-switch::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        background: white;
+        border-radius: 50%;
+        transition: transform 0.3s ease;
+      }
+
+      .toggle-switch.active::after {
+        transform: translateX(20px);
+      }
+
+      .footer {
+        padding: 16px 20px;
+        background: rgba(0, 0, 0, 0.1);
+        text-align: center;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .footer-links {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        margin-bottom: 8px;
+      }
+
+      .footer-link {
+        color: white;
+        text-decoration: none;
+        font-size: 12px;
+        opacity: 0.8;
+        transition: opacity 0.2s ease;
+      }
+
+      .footer-link:hover {
+        opacity: 1;
+      }
+
+      .version {
+        font-size: 11px;
+        opacity: 0.6;
+      }
+
+      .icon {
+        font-size: 16px;
+      }
+
+      .time-saved {
+        color: #ffd54f;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>🚀 YouTube Visibility Enhancer</h1>
+      <p>Streamline your video management workflow</p>
+    </div>
+
+    <div class="content">
+      <div class="stats-section">
+        <div class="stats-title">
+          <span class="icon">📊</span>
+          Today's Activity
+        </div>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-number" id="visibility-changes">0</div>
+            <div class="stat-label">Visibility Changes</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" id="batch-operations">0</div>
+            <div class="stat-label">Batch Operations</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" id="keyboard-shortcuts">0</div>
+            <div class="stat-label">Shortcuts Used</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number time-saved" id="time-saved">0s</div>
+            <div class="stat-label">Time Saved</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="shortcuts-section">
+        <div class="stats-title">
+          <span class="icon">⌨️</span>
+          Keyboard Shortcuts
+        </div>
+        <div class="shortcut-item">
+          <span>Set Private</span>
+          <span class="shortcut-key">1</span>
+        </div>
+        <div class="shortcut-item">
+          <span>Set Unlisted</span>
+          <span class="shortcut-key">2</span>
+        </div>
+        <div class="shortcut-item">
+          <span>Set Public</span>
+          <span class="shortcut-key">3</span>
+        </div>
+        <div class="shortcut-item">
+          <span>Undo Last Change</span>
+          <span class="shortcut-key">Ctrl+Z</span>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="stats-title">
+          <span class="icon">⚙️</span>
+          Settings
+        </div>
+        <div class="setting-item">
+          <span>Keyboard Shortcuts</span>
+          <div
+            class="toggle-switch active"
+            data-setting="enableKeyboardShortcuts"
+          ></div>
+        </div>
+        <div class="setting-item">
+          <span>Batch Mode</span>
+          <div
+            class="toggle-switch active"
+            data-setting="enableBatchMode"
+          ></div>
+        </div>
+        <div class="setting-item">
+          <span>Auto-Save</span>
+          <div class="toggle-switch active" data-setting="enableAutoSave"></div>
+        </div>
+        <div class="setting-item">
+          <span>Notifications</span>
+          <div
+            class="toggle-switch active"
+            data-setting="showNotifications"
+          ></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-links">
+        <a href="#" class="footer-link" id="feedback-link">📝 Feedback</a>
+        <a href="#" class="footer-link" id="help-link">❓ Help</a>
+        <a href="#" class="footer-link" id="changelog-link">📋 Changelog</a>
+      </div>
+      <div class="version">v1.0.0</div>
+    </div>
+
+    <script>
+      // Initialize popup
+      document.addEventListener("DOMContentLoaded", async function () {
+        await loadSettings();
+        await loadStats();
+        setupEventListeners();
+      });
+
+      async function loadSettings() {
+        const settings = await chrome.runtime.sendMessage({
+          type: "GET_SETTINGS",
+        });
+
+        document.querySelectorAll(".toggle-switch").forEach((toggle) => {
+          const setting = toggle.dataset.setting;
+          if (settings[setting]) {
+            toggle.classList.add("active");
+          } else {
+            toggle.classList.remove("active");
+          }
+        });
+      }
+
+      async function loadStats() {
+        const result = await chrome.storage.local.get({ usageStats: {} });
+        const today = new Date().toDateString();
+        const todayStats = result.usageStats[today] || {
+          visibilityChanges: 0,
+          batchOperations: 0,
+          keyboardShortcuts: 0,
+          timesSaved: 0,
+        };
+
+        document.getElementById("visibility-changes").textContent =
+          todayStats.visibilityChanges;
+        document.getElementById("batch-operations").textContent =
+          todayStats.batchOperations;
+        document.getElementById("keyboard-shortcuts").textContent =
+          todayStats.keyboardShortcuts;
+
+        // Format time saved
+        const timeSaved = todayStats.timesSaved;
+        if (timeSaved >= 60) {
+          const minutes = Math.floor(timeSaved / 60);
+          const seconds = timeSaved % 60;
+          document.getElementById(
+            "time-saved"
+          ).textContent = `${minutes}m ${seconds}s`;
+        } else {
+          document.getElementById("time-saved").textContent = `${timeSaved}s`;
+        }
+      }
+
+      function setupEventListeners() {
+        // Toggle switches
+        document.querySelectorAll(".toggle-switch").forEach((toggle) => {
+          toggle.addEventListener("click", async function () {
+            const setting = this.dataset.setting;
+            const isActive = this.classList.contains("active");
+
+            // Toggle UI
+            this.classList.toggle("active");
+
+            // Update setting
+            const newValue = !isActive;
+            await chrome.runtime.sendMessage({
+              type: "UPDATE_SETTINGS",
+              data: { [setting]: newValue },
+            });
+
+            // Send message to content script if needed
+            const [tab] = await chrome.tabs.query({
+              active: true,
+              currentWindow: true,
+            });
+            if (tab && tab.url.includes("studio.youtube.com")) {
+              chrome.tabs.sendMessage(tab.id, {
+                type: "SETTINGS_UPDATED",
+                setting: setting,
+                value: newValue,
+              });
+            }
+          });
+        });
+
+        // Footer links
+        document
+          .getElementById("feedback-link")
+          .addEventListener("click", (e) => {
+            e.preventDefault();
+            chrome.tabs.create({
+              url: "https://github.com/your-repo/youtube-visibility-enhancer/issues",
+            });
+          });
+
+        document.getElementById("help-link").addEventListener("click", (e) => {
+          e.preventDefault();
+          chrome.tabs.create({
+            url: "https://github.com/your-repo/youtube-visibility-enhancer/wiki",
+          });
+        });
+
+        document
+          .getElementById("changelog-link")
+          .addEventListener("click", (e) => {
+            e.preventDefault();
+            chrome.tabs.create({
+              url: "https://github.com/your-repo/youtube-visibility-enhancer/releases",
+            });
+          });
+      }
+
+      // Auto-refresh stats every 30 seconds
+      setInterval(loadStats, 30000);
+    </script>
+  </body>
+</html>
