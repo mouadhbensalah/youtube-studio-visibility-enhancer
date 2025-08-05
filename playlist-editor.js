@@ -263,7 +263,7 @@ class PlaylistVisibilityEditor {
         return match ? match[1] : null;
     }
 
-    async changeVideoVisibility(row, newVisibility) {
+    changeVideoVisibility(row, newVisibility) {
         const videoId = this.getVideoId(row);
         if (!videoId) {
             console.error('Could not extract video ID');
@@ -278,9 +278,9 @@ class PlaylistVisibilityEditor {
         
         console.log(`🎬 Queuing ${videoId}: ${currentVisibility} → ${newVisibility}`);
         
-        // Check if YouTube's change limit is reached
-        if (this.changesSinceRefresh >= this.maxChangesBeforeReset) {
-            console.log(`⚠️ YouTube change limit reached. Storing for manual save.`);
+        // Check if YouTube's change limit is reached OR if we're already processing
+        if (this.changesSinceRefresh >= this.maxChangesBeforeReset || this.isProcessing) {
+            console.log(`⚠️ YouTube change limit reached or currently processing. Storing for manual save.`);
             this.completedChanges.set(videoId, newVisibility);
             this.showCompletedState(row, newVisibility);
             this.updateSaveButton();
@@ -363,6 +363,12 @@ class PlaylistVisibilityEditor {
 
     async triggerVisibilityChange(row, newVisibility) {
         return new Promise((resolve, reject) => {
+            // Verify row still exists and is valid
+            if (!row || !document.body.contains(row)) {
+                reject(new Error('Row no longer exists in DOM'));
+                return;
+            }
+            
             const dropdownTrigger = row.querySelector('.edit-triangle-icon');
             if (!dropdownTrigger) {
                 reject(new Error('Dropdown trigger not found'));
@@ -371,65 +377,71 @@ class PlaylistVisibilityEditor {
             
             console.log(`🎬 Opening UI for visibility change: ${newVisibility}`);
             
-            // Click dropdown
-            dropdownTrigger.click();
+            // Close any existing modals first
+            this.closeAnyOpenModals();
             
             setTimeout(() => {
-                const visibilityModal = document.querySelector('ytcp-video-visibility-select');
-                if (!visibilityModal) {
-                    reject(new Error('Visibility modal not found'));
-                    return;
-                }
-                
-                console.log(`📋 Modal found, looking for ${newVisibility} radio button`);
-                
-                const radioButton = visibilityModal.querySelector(`tp-yt-paper-radio-button[name="${newVisibility}"]`);
-                if (!radioButton) {
-                    reject(new Error(`Radio button for ${newVisibility} not found`));
-                    return;
-                }
-                
-                // Click radio button
-                radioButton.click();
-                console.log(`✓ Clicked ${newVisibility} radio button`);
+                // Click dropdown
+                dropdownTrigger.click();
                 
                 setTimeout(() => {
-                    // Enhanced save button detection
-                    const saveButton = this.findSaveButton();
-                    
-                    if (saveButton) {
-                        console.log('💾 Save button found, clicking...');
-                        
-                        // Set up success detection
-                        this.watchForModalClose(visibilityModal, () => {
-                            console.log(`✅ Visibility changed to ${newVisibility}`);
-                            this.updateRowVisual(row, newVisibility);
-                            resolve();
-                        });
-                        
-                        // Click save button
-                        saveButton.click();
-                        
-                    } else {
-                        console.log('❌ Save button not found, trying Enter key...');
-                        
-                        // Fallback: try Enter key
-                        this.watchForModalClose(visibilityModal, () => {
-                            this.updateRowVisual(row, newVisibility);
-                            resolve();
-                        });
-                        
-                        const enterEvent = new KeyboardEvent('keydown', {
-                            key: 'Enter',
-                            code: 'Enter',
-                            keyCode: 13,
-                            bubbles: true
-                        });
-                        visibilityModal.dispatchEvent(enterEvent);
-                        document.dispatchEvent(enterEvent);
+                    const visibilityModal = document.querySelector('ytcp-video-visibility-select');
+                    if (!visibilityModal) {
+                        reject(new Error('Visibility modal not found'));
+                        return;
                     }
-                }, 400);
-            }, 600);
+                    
+                    console.log(`📋 Modal found, looking for ${newVisibility} radio button`);
+                    
+                    const radioButton = visibilityModal.querySelector(`tp-yt-paper-radio-button[name="${newVisibility}"]`);
+                    if (!radioButton) {
+                        reject(new Error(`Radio button for ${newVisibility} not found`));
+                        return;
+                    }
+                    
+                    // Click radio button
+                    radioButton.click();
+                    console.log(`✓ Clicked ${newVisibility} radio button`);
+                    
+                    setTimeout(() => {
+                        // Enhanced save button detection
+                        const saveButton = this.findSaveButton();
+                        
+                        if (saveButton) {
+                            console.log('💾 Save button found, clicking...');
+                            
+                            // Set up success detection
+                            this.watchForModalClose(visibilityModal, () => {
+                                console.log(`✅ Visibility changed to ${newVisibility}`);
+                                this.updateRowVisual(row, newVisibility);
+                                resolve();
+                            });
+                            
+                            // Click save button
+                            saveButton.click();
+                            
+                        } else {
+                            console.log('❌ Save button not found, trying cancel and retry...');
+                            
+                            // Try to find and click cancel button
+                            const cancelButton = visibilityModal.querySelector('[aria-label*="Cancel"], [aria-label*="Close"], .cancel-button');
+                            if (cancelButton) {
+                                console.log('🚫 Clicking cancel button');
+                                cancelButton.click();
+                                
+                                setTimeout(() => {
+                                    reject(new Error('Save button not found, cancelled modal'));
+                                }, 300);
+                            } else {
+                                // Force close modal and reject
+                                console.log('🔧 Force closing modal due to missing save button');
+                                this.closeAnyOpenModals();
+                                reject(new Error('Save button not found, no cancel option'));
+                            }
+                        }
+                    }, 500); // Increased timeout for save button detection
+                }, 700); // Increased timeout for modal appearance
+            }, 200); // Small delay before opening dropdown
         });
     }
 
@@ -569,30 +581,132 @@ class PlaylistVisibilityEditor {
         console.log(`🚀 Processing ${this.completedChanges.size} pending changes...`);
         
         const saveText = this.saveButton.querySelector('.ysve-save-text');
+        const originalText = saveText.textContent;
         saveText.textContent = 'Processing...';
+        this.saveButton.style.pointerEvents = 'none';
+        
+        // Convert to array to avoid modification during iteration
+        const changesToProcess = Array.from(this.completedChanges.entries());
+        let successCount = 0;
+        let errorCount = 0;
         
         try {
-            // Process completed changes
-            for (const [videoId, newVisibility] of this.completedChanges.entries()) {
+            for (let i = 0; i < changesToProcess.length; i++) {
+                const [videoId, newVisibility] = changesToProcess[i];
+                
+                console.log(`📋 Processing ${i + 1}/${changesToProcess.length}: ${videoId} → ${newVisibility}`);
+                
+                // Find fresh row reference (DOM may have changed)
                 const row = this.findRowByVideoId(videoId);
-                if (row) {
-                    await this.triggerVisibilityChange(row, newVisibility);
-                    await this.delay(1000);
+                if (!row) {
+                    console.warn(`❌ Row not found for video ${videoId}, skipping`);
+                    errorCount++;
+                    continue;
+                }
+                
+                try {
+                    await this.triggerVisibilityChangeWithRetry(row, videoId, newVisibility);
+                    successCount++;
+                    console.log(`✅ Successfully processed ${videoId}`);
+                    
+                    // Longer delay between changes to let YouTube settle
+                    if (i < changesToProcess.length - 1) {
+                        await this.delay(2000);
+                    }
+                    
+                } catch (error) {
+                    console.error(`❌ Failed to process ${videoId}:`, error.message);
+                    errorCount++;
+                    
+                    // Close any stuck modals before continuing
+                    this.closeAnyOpenModals();
+                    await this.delay(500);
                 }
             }
             
+            // Clear completed changes
             this.completedChanges.clear();
-            saveText.textContent = 'All Saved!';
+            
+            // Show results
+            if (errorCount === 0) {
+                saveText.textContent = `✅ All ${successCount} Saved!`;
+            } else {
+                saveText.textContent = `⚠️ ${successCount} saved, ${errorCount} failed`;
+            }
             
             setTimeout(() => {
                 this.updateSaveButton();
-                saveText.textContent = 'Save All Changes';
-            }, 2000);
+                saveText.textContent = originalText;
+                this.saveButton.style.pointerEvents = 'auto';
+            }, 3000);
             
         } catch (error) {
-            console.error('Error processing pending changes:', error);
+            console.error('Critical error in batch processing:', error);
             saveText.textContent = 'Error - Try Again';
+            this.saveButton.style.pointerEvents = 'auto';
         }
+    }
+    
+    async triggerVisibilityChangeWithRetry(row, videoId, newVisibility, retryCount = 0) {
+        const maxRetries = 2;
+        
+        try {
+            await this.triggerVisibilityChange(row, newVisibility);
+            
+        } catch (error) {
+            console.log(`Attempt ${retryCount + 1} failed for ${videoId}: ${error.message}`);
+            
+            if (retryCount < maxRetries) {
+                console.log(`🔄 Retrying ${videoId} (${retryCount + 1}/${maxRetries})`);
+                
+                // Close any stuck modals
+                this.closeAnyOpenModals();
+                await this.delay(1000);
+                
+                // Get fresh row reference
+                const freshRow = this.findRowByVideoId(videoId);
+                if (freshRow) {
+                    return this.triggerVisibilityChangeWithRetry(freshRow, videoId, newVisibility, retryCount + 1);
+                } else {
+                    throw new Error(`Row disappeared after retry for ${videoId}`);
+                }
+            } else {
+                throw new Error(`Failed after ${maxRetries} retries: ${error.message}`);
+            }
+        }
+    }
+    
+    closeAnyOpenModals() {
+        // Close any visibility modals that might be stuck open
+        const modals = document.querySelectorAll('ytcp-video-visibility-select');
+        modals.forEach(modal => {
+            try {
+                // Try to find and click cancel/close button
+                const cancelButton = modal.querySelector('[aria-label*="Cancel"], [aria-label*="Close"], .cancel-button');
+                if (cancelButton) {
+                    console.log('🚫 Clicking cancel button on stuck modal');
+                    cancelButton.click();
+                } else {
+                    // Force close
+                    console.log('🔧 Force closing stuck modal');
+                    modal.style.display = 'none';
+                    if (modal.parentNode) {
+                        modal.parentNode.removeChild(modal);
+                    }
+                }
+            } catch (e) {
+                console.log('Error closing modal:', e);
+            }
+        });
+        
+        // Also close any generic dialogs
+        const dialogs = document.querySelectorAll('[role="dialog"], .dialog, .modal');
+        dialogs.forEach(dialog => {
+            if (dialog.style.display !== 'none') {
+                console.log('🚪 Closing dialog');
+                dialog.style.display = 'none';
+            }
+        });
     }
 
     findRowByVideoId(videoId) {
