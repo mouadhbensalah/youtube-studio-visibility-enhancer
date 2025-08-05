@@ -106,9 +106,9 @@ class YouTubeVisibilityEnhancer {
     container.className = 'yt-visibility-enhanced-container';
     container.innerHTML = `
       <div class="yt-visibility-enhanced-header">
-        <h3>Quick Visibility</h3>
+        <h3>🚨 Quick Visibility (SAFE MODE)</h3>
         <div class="yt-visibility-shortcuts">
-          <kbd>1</kbd> Private · <kbd>2</kbd> Unlisted · <kbd>3</kbd> Public
+          <kbd>1</kbd> Private · <kbd>2</kbd> Unlisted · <kbd>3</kbd> Public ⚠️
         </div>
       </div>
       <div class="yt-visibility-enhanced-controls">
@@ -132,14 +132,17 @@ class YouTubeVisibilityEnhancer {
           <input type="radio" name="visibility" value="PUBLIC">
           <span class="radio-custom"></span>
           <span class="label-text">
-            <strong>Public</strong>
-            <small>Everyone can see</small>
+            <strong>⚠️ Public</strong>
+            <small>EVERYONE can see!</small>
           </span>
         </label>
       </div>
       <div class="yt-visibility-status">
         <span class="status-text">Ready to save</span>
         <button class="undo-btn" disabled>↶ Undo</button>
+      </div>
+      <div class="safety-notice">
+        <small>🛡️ Public changes require confirmation to prevent accidents</small>
       </div>
     `;
 
@@ -226,6 +229,57 @@ class YouTubeVisibilityEnhancer {
           const newValue = e.target.value;
           const oldValue = this.getCurrentVisibility();
           
+          // SAFETY CHECK: Confirm before making video PUBLIC
+          if (newValue === 'PUBLIC') {
+            const confirmPublic = confirm(
+              '⚠️ MAKE VIDEO PUBLIC?\n\n' +
+              'This will make your video visible to EVERYONE on YouTube.\n' +
+              'Anyone can search for and watch this video.\n\n' +
+              'Are you absolutely sure you want to continue?'
+            );
+            
+            if (!confirmPublic) {
+              // User cancelled - revert to previous selection
+              const oldRadio = container.querySelector(`input[value="${oldValue}"]`);
+              if (oldRadio) {
+                oldRadio.checked = true;
+              }
+              statusText.textContent = 'Public change cancelled';
+              statusText.style.color = '#ff6b6b';
+              setTimeout(() => {
+                statusText.style.color = '';
+                statusText.textContent = `Still ${this.getVisibilityLabel(oldValue)}`;
+              }, 2000);
+              return;
+            }
+          }
+          
+          // SAFETY CHECK: Warn when changing FROM public
+          if (oldValue === 'PUBLIC' && newValue !== 'PUBLIC') {
+            const confirmChange = confirm(
+              '📊 CHANGE FROM PUBLIC?\n\n' +
+              'Your video is currently PUBLIC and may have views/engagement.\n' +
+              'Changing to ' + this.getVisibilityLabel(newValue) + ' will affect its discoverability.\n\n' +
+              'Continue with this change?'
+            );
+            
+            if (!confirmChange) {
+              // User cancelled - revert to PUBLIC
+              const publicRadio = container.querySelector(`input[value="PUBLIC"]`);
+              if (publicRadio) {
+                publicRadio.checked = true;
+              }
+              statusText.textContent = 'Change cancelled';
+              statusText.style.color = '#ff6b6b';
+              setTimeout(() => {
+                statusText.style.color = '';
+                statusText.textContent = 'Still Public';
+              }, 2000);
+              return;
+            }
+          }
+
+          // Proceed with the change
           this.undoStack.push({
             action: 'visibility-change',
             oldValue: oldValue,
@@ -235,12 +289,14 @@ class YouTubeVisibilityEnhancer {
 
           undoBtn.disabled = false;
           statusText.textContent = 'Saving...';
+          statusText.style.color = '#2196f3';
           
-          // Simulate the original YouTube behavior
+          // Trigger the YouTube change
           this.triggerYouTubeVisibilityChange(newValue);
           
           setTimeout(() => {
-            statusText.textContent = `Set to ${this.getVisibilityLabel(newValue)}`;
+            statusText.style.color = '#4caf50';
+            statusText.textContent = `✓ Set to ${this.getVisibilityLabel(newValue)}`;
           }, 800);
         }
       });
@@ -351,6 +407,20 @@ class YouTubeVisibilityEnhancer {
   setVisibility(value) {
     const radio = document.querySelector(`.yt-visibility-enhanced-container input[value="${value}"]`);
     if (radio) {
+      // For PUBLIC, always show confirmation even with keyboard shortcut
+      if (value === 'PUBLIC') {
+        const confirmPublic = confirm(
+          '⚠️ KEYBOARD SHORTCUT: MAKE PUBLIC?\n\n' +
+          'You pressed "3" to make this video PUBLIC.\n' +
+          'This will make it visible to EVERYONE on YouTube.\n\n' +
+          'Continue?'
+        );
+        
+        if (!confirmPublic) {
+          return; // Don't change anything
+        }
+      }
+      
       radio.checked = true;
       radio.dispatchEvent(new Event('change'));
     }

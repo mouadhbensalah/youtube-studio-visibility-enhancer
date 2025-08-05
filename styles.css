@@ -69,12 +69,75 @@
   cursor: pointer;
   transition: all 0.2s ease;
   background: white;
+  position: relative;
 }
 
 .yt-visibility-option:hover {
   border-color: #1976d2;
   background: #f3f7ff;
   transform: translateY(-1px);
+}
+
+/* SAFETY STYLING: Make Public option more prominent */
+.yt-visibility-option[data-value="PUBLIC"] {
+  border-color: #ff9800;
+  background: #fff8e1;
+}
+
+.yt-visibility-option[data-value="PUBLIC"]:hover {
+  border-color: #f57c00;
+  background: #ffecb3;
+  box-shadow: 0 4px 12px rgba(255,152,0,0.3);
+}
+
+.yt-visibility-option[data-value="PUBLIC"]::before {
+  content: "⚠️";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 16px;
+}
+
+.yt-visibility-option[data-value="PUBLIC"] .label-text strong {
+  color: #e65100;
+}
+
+/* PRIVATE styling - safe green */
+.yt-visibility-option[data-value="PRIVATE"] {
+  border-color: #4caf50;
+  background: #f1f8e9;
+}
+
+.yt-visibility-option[data-value="PRIVATE"]:hover {
+  border-color: #388e3c;
+  background: #dcedc8;
+}
+
+.yt-visibility-option[data-value="PRIVATE"]::before {
+  content: "🔒";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 16px;
+}
+
+/* UNLISTED styling - neutral blue */
+.yt-visibility-option[data-value="UNLISTED"] {
+  border-color: #2196f3;
+  background: #e3f2fd;
+}
+
+.yt-visibility-option[data-value="UNLISTED"]:hover {
+  border-color: #1976d2;
+  background: #bbdefb;
+}
+
+.yt-visibility-option[data-value="UNLISTED"]::before {
+  content: "🔗";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 16px;
 }
 
 .yt-visibility-option input[type="radio"] {
@@ -132,6 +195,7 @@
   align-items: center;
   padding-top: 12px;
   border-top: 1px solid #e1e5e9;
+  margin-bottom: 8px;
 }
 
 .status-text {
@@ -158,6 +222,19 @@
 .undo-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.safety-notice {
+  text-align: center;
+  padding: 8px;
+  background: rgba(255, 152, 0, 0.1);
+  border: 1px solid rgba(255, 152, 0, 0.3);
+  border-radius: 6px;
+  color: #e65100;
+}
+
+.safety-notice small {
+  font-weight: 500;
 }
 
 /* Row-level controls for video lists */
