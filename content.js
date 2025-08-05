@@ -149,7 +149,7 @@ class YouTubeVisibilityEnhancer {
         <button class="undo-btn" disabled>↶ Undo</button>
       </div>
       <div class="safety-notice">
-        <small>🛡️ Public changes require confirmation to prevent accidents</small>
+        <small>Public changes require confirmation to prevent accidents</small>
       </div>
     `;
 

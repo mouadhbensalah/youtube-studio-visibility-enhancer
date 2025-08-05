@@ -55,20 +55,13 @@
 }
 
 .safe-mode-badge {
-  background: linear-gradient(135deg, #4caf50, #388e3c);
+  background: #4caf50;
   color: white;
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(76,175,80,0.3);
-  animation: safeBadgePulse 3s infinite;
-}
-
-@keyframes safeBadgePulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
 }
 
 .yt-visibility-shortcuts {
@@ -120,45 +113,14 @@
   border: 2px solid #e1e5e9;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: border-color 0.2s ease;
   background: white;
   position: relative;
   box-sizing: border-box;
-  overflow: hidden;
 }
 
 .yt-visibility-option:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-}
-
-/* Tooltip styling */
-.yt-visibility-option::after {
-  content: attr(title);
-  position: absolute;
-  bottom: -45px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.9);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  z-index: 1000;
-  max-width: 200px;
-  white-space: normal;
-  text-align: center;
-  line-height: 1.3;
-}
-
-.yt-visibility-option:hover::after {
-  opacity: 1;
-  visibility: visible;
-  bottom: -55px;
+  border-color: #1976d2;
 }
 
 .radio-section {
@@ -181,13 +143,11 @@
 /* PRIVATE styling - safe green */
 .yt-visibility-option[data-value="PRIVATE"] {
   border-color: #4caf50;
-  background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%);
+  background: #f1f8e9;
 }
 
 .yt-visibility-option[data-value="PRIVATE"]:hover {
   border-color: #388e3c;
-  background: linear-gradient(135deg, #c8e6c9 0%, #dcedc8 100%);
-  box-shadow: 0 8px 25px rgba(76,175,80,0.3);
 }
 
 .yt-visibility-option[data-value="PRIVATE"] .label-section strong {
@@ -197,62 +157,49 @@
 /* UNLISTED styling - neutral blue */
 .yt-visibility-option[data-value="UNLISTED"] {
   border-color: #2196f3;
-  background: linear-gradient(135deg, #e3f2fd 0%, #f3f9ff 100%);
+  background: #e3f2fd;
 }
 
 .yt-visibility-option[data-value="UNLISTED"]:hover {
   border-color: #1976d2;
-  background: linear-gradient(135deg, #bbdefb 0%, #e1f5fe 100%);
-  box-shadow: 0 8px 25px rgba(33,150,243,0.3);
 }
 
 .yt-visibility-option[data-value="UNLISTED"] .label-section strong {
   color: #1565c0;
 }
 
-/* PUBLIC styling - warning orange/red */
+/* PUBLIC styling - warning orange */
 .yt-visibility-option[data-value="PUBLIC"] {
   border-color: #ff9800;
-  background: linear-gradient(135deg, #fff3e0 0%, #ffebcd 100%);
-  position: relative;
+  background: #fff3e0;
 }
 
 .yt-visibility-option[data-value="PUBLIC"]:hover {
   border-color: #f57c00;
-  background: linear-gradient(135deg, #ffe0b2 0%, #ffd180 100%);
-  box-shadow: 0 8px 25px rgba(255,152,0,0.4);
 }
 
 .yt-visibility-option[data-value="PUBLIC"] .label-section strong {
   color: #e65100;
-  animation: warningPulse 2s infinite;
 }
 
-@keyframes warningPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-/* Selected state styling */
+/* Selected state - simple highlight */
 .yt-visibility-option:has(input:checked) {
-  transform: scale(1.05);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-  z-index: 10;
+  border-width: 3px;
 }
 
 .yt-visibility-option[data-value="PRIVATE"]:has(input:checked) {
   border-color: #2e7d32;
-  background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+  background: #dcedc8;
 }
 
 .yt-visibility-option[data-value="UNLISTED"]:has(input:checked) {
   border-color: #1565c0;
-  background: linear-gradient(135deg, #90caf9 0%, #64b5f6 100%);
+  background: #bbdefb;
 }
 
 .yt-visibility-option[data-value="PUBLIC"]:has(input:checked) {
   border-color: #e65100;
-  background: linear-gradient(135deg, #ffb74d 0%, #ffa726 100%);
+  background: #ffe0b2;
 }
 
 .yt-visibility-option input[type="radio"] {
@@ -260,21 +207,18 @@
 }
 
 .radio-custom {
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   border: 3px solid #ccc;
   border-radius: 50%;
   position: relative;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-  margin-top: 2px;
+  transition: border-color 0.2s ease;
   background: white;
 }
 
 .yt-visibility-option input:checked + .radio-custom {
   border-color: currentColor;
   background: currentColor;
-  transform: scale(1.1);
 }
 
 .yt-visibility-option input:checked + .radio-custom::after {
@@ -283,16 +227,10 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   background: white;
   border-radius: 50%;
-  animation: radioCheck 0.3s ease;
-}
-
-@keyframes radioCheck {
-  0% { transform: translate(-50%, -50%) scale(0); }
-  100% { transform: translate(-50%, -50%) scale(1); }
 }
 
 .label-text {
