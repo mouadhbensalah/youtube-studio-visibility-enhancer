@@ -14,12 +14,18 @@ class PlaylistVisibilityEditor {
         this.processingQueue = [];
         this.isProcessing = false;
         this.batchResults = new Map();
+        this.completedChanges = new Map(); // Track completed changes
         
         // Page refresh prevention
         this.originalBeforeUnload = null;
         this.originalPushState = null;
         this.originalReplaceState = null;
         this.pageState = null;
+        
+        // YouTube state tracking
+        this.lastRefreshTime = Date.now();
+        this.changesSinceRefresh = 0;
+        this.maxChangesBeforeReset = 1; // YouTube's apparent limit
         
         this.init();
     }
@@ -61,9 +67,132 @@ class PlaylistVisibilityEditor {
 
     setupPlaylistEnhancements() {
         this.createOverlay();
+        this.createManualSaveButton();
         this.attachEventListeners();
         this.enhanceVideoRows();
+        this.monitorPageRefreshes();
         console.log('✅ Playlist enhancements ready');
+    }
+    
+    createManualSaveButton() {
+        // Create floating save button
+        this.saveButton = document.createElement('div');
+        this.saveButton.id = 'ysve-manual-save';
+        this.saveButton.innerHTML = `
+            <div class="ysve-save-content">
+                <div class="ysve-save-icon">💾</div>
+                <div class="ysve-save-text">Save All Changes</div>
+                <div class="ysve-save-count">0 pending</div>
+            </div>
+        `;
+        
+        this.saveButton.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(33, 150, 243, 0.95);
+            color: white;
+            padding: 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            z-index: 10001;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+            display: none;
+            min-width: 160px;
+        `;
+        
+        this.saveButton.addEventListener('click', () => {
+            this.processAllPendingChanges();
+        });
+        
+        this.saveButton.addEventListener('mouseenter', () => {
+            this.saveButton.style.transform = 'scale(1.05)';
+            this.saveButton.style.background = 'rgba(33, 150, 243, 1)';
+        });
+        
+        this.saveButton.addEventListener('mouseleave', () => {
+            this.saveButton.style.transform = 'scale(1)';
+            this.saveButton.style.background = 'rgba(33, 150, 243, 0.95)';
+        });
+        
+        document.body.appendChild(this.saveButton);
+    }
+    
+    updateSaveButton() {
+        if (!this.saveButton) return;
+        
+        const pendingCount = this.processingQueue.length + this.completedChanges.size;
+        const countEl = this.saveButton.querySelector('.ysve-save-count');
+        
+        if (pendingCount > 0) {
+            this.saveButton.style.display = 'block';
+            countEl.textContent = `${pendingCount} pending`;
+        } else {
+            this.saveButton.style.display = 'none';
+        }
+    }
+    
+    monitorPageRefreshes() {
+        // Detect when YouTube refreshes the page content
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                // Check if the video table was replaced (sign of refresh)
+                if (mutation.type === 'childList') {
+                    const addedNodes = Array.from(mutation.addedNodes);
+                    const hasVideoTable = addedNodes.some(node => 
+                        node.nodeType === 1 && 
+                        (node.classList?.contains('video-table-content') ||
+                         node.querySelector?.('.video-table-content'))
+                    );
+                    
+                    if (hasVideoTable) {
+                        console.log('🔄 Page refresh detected!');
+                        this.handlePageRefresh();
+                    }
+                }
+            });
+        });
+        
+        observer.observe(document.body, { 
+            childList: true, 
+            subtree: true 
+        });
+    }
+    
+    handlePageRefresh() {
+        // Reset state after page refresh
+        this.lastRefreshTime = Date.now();
+        this.changesSinceRefresh = 0;
+        
+        // Re-enhance new video rows
+        setTimeout(() => {
+            this.enhanceVideoRows();
+            this.restorePendingStates();
+        }, 500);
+    }
+    
+    restorePendingStates() {
+        // Restore visual states for pending changes
+        this.completedChanges.forEach((visibility, videoId) => {
+            const row = this.findRowByVideoId(videoId);
+            if (row) {
+                this.showCompletedState(row, visibility);
+            }
+        });
+    }
+    
+    findRowByVideoId(videoId) {
+        const videoRows = document.querySelectorAll('ytcp-video-row');
+        for (const row of videoRows) {
+            if (this.getVideoId(row) === videoId) {
+                return row;
+            }
+        }
+        return null;
     }
 
     createOverlay() {
@@ -239,10 +368,20 @@ class PlaylistVisibilityEditor {
             // Update existing queue item
             this.processingQueue[existingIndex].newVisibility = newVisibility;
             console.log(`Updated queue item for ${videoId}: ${newVisibility}`);
+            this.updateSaveButton();
             return;
         }
         
-        // Add to queue
+        // Check if YouTube's change limit is reached
+        if (this.changesSinceRefresh >= this.maxChangesBeforeReset) {
+            console.log(`⚠️ YouTube change limit reached (${this.changesSinceRefresh}). Storing for manual save.`);
+            this.completedChanges.set(videoId, newVisibility);
+            this.showCompletedState(row, newVisibility);
+            this.updateSaveButton();
+            return;
+        }
+        
+        // Add to queue for immediate processing
         this.processingQueue.push({
             row,
             videoId,
@@ -254,15 +393,135 @@ class PlaylistVisibilityEditor {
         
         // Show queued state
         this.showQueuedState(row);
+        this.updateSaveButton();
         
-        // Start batch processing with delay to allow more items to be queued
-        if (!this.isProcessing) {
-            // Delay to allow rapid successive keypresses to be queued together
+        // Start processing immediately for first change after refresh
+        if (!this.isProcessing && this.changesSinceRefresh === 0) {
             setTimeout(() => {
                 if (!this.isProcessing && this.processingQueue.length > 0) {
                     this.processBatch();
                 }
-            }, 1500); // Wait 1.5 seconds to collect more queue items
+            }, 500); // Shorter delay for immediate changes
+        }
+    }
+    
+    async processQueueItem(item) {
+        const { row, videoId, newVisibility } = item;
+        
+        this.showLoadingState(row);
+        
+        try {
+            // Use UI method (more reliable than API for now)
+            await this.preventRefreshUIMethod(row, newVisibility);
+            this.changesSinceRefresh++;
+            
+            // If this was the last allowed change, store future changes
+            if (this.changesSinceRefresh >= this.maxChangesBeforeReset) {
+                console.log(`⚠️ Reached YouTube's change limit. Future changes will be stored.`);
+            }
+            
+        } catch (error) {
+            throw error;
+        }
+    }
+    
+    showCompletedState(row, newVisibility) {
+        const visibilityCell = row.querySelector('.tablecell-visibility');
+        if (visibilityCell) {
+            // Clear existing indicators
+            const existingIndicator = visibilityCell.querySelector('.ysve-queue-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            
+            visibilityCell.style.opacity = '0.8';
+            visibilityCell.style.borderLeft = '3px solid #9C27B0'; // Purple for completed
+            visibilityCell.style.position = 'relative';
+            
+            // Add completed indicator
+            const completedIndicator = document.createElement('div');
+            completedIndicator.className = 'ysve-queue-indicator';
+            completedIndicator.innerHTML = '📋';
+            completedIndicator.style.cssText = `
+                position: absolute;
+                top: 2px;
+                right: 2px;
+                fontSize: 12px;
+                background: rgba(156, 39, 176, 0.8);
+                color: white;
+                border-radius: 50%;
+                width: 16px;
+                height: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+            `;
+            
+            visibilityCell.appendChild(completedIndicator);
+        }
+    }
+    
+    async processAllPendingChanges() {
+        if (this.completedChanges.size === 0 && this.processingQueue.length === 0) {
+            console.log('No pending changes to process');
+            return;
+        }
+        
+        console.log(`🚀 Processing ${this.completedChanges.size + this.processingQueue.length} pending changes...`);
+        
+        // Show processing state on save button
+        const saveText = this.saveButton.querySelector('.ysve-save-text');
+        const originalText = saveText.textContent;
+        saveText.textContent = 'Processing...';
+        this.saveButton.style.pointerEvents = 'none';
+        this.saveButton.style.opacity = '0.7';
+        
+        try {
+            // Process completed changes first (need to trigger UI)
+            const completedEntries = Array.from(this.completedChanges.entries());
+            for (const [videoId, newVisibility] of completedEntries) {
+                const row = this.findRowByVideoId(videoId);
+                if (row) {
+                    console.log(`Processing completed change: ${videoId} -> ${newVisibility}`);
+                    await this.processCompletedChange(row, videoId, newVisibility);
+                    await this.delay(1000); // Longer delay for completed changes
+                }
+            }
+            
+            // Process any remaining queue items
+            if (this.processingQueue.length > 0) {
+                await this.processBatch();
+            }
+            
+            // Clear completed changes
+            this.completedChanges.clear();
+            
+            // Show success
+            saveText.textContent = 'All Saved!';
+            setTimeout(() => {
+                this.updateSaveButton();
+                saveText.textContent = originalText;
+                this.saveButton.style.pointerEvents = 'auto';
+                this.saveButton.style.opacity = '1';
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Error processing pending changes:', error);
+            saveText.textContent = 'Error - Try Again';
+            this.saveButton.style.pointerEvents = 'auto';
+            this.saveButton.style.opacity = '1';
+        }
+    }
+    
+    async processCompletedChange(row, videoId, newVisibility) {
+        // For completed changes, we need to trigger the UI interaction
+        try {
+            await this.preventRefreshUIMethod(row, newVisibility);
+            this.updateRowVisual(row, newVisibility);
+        } catch (error) {
+            console.error(`Failed to process completed change for ${videoId}:`, error);
+            throw error;
         }
     }
     
@@ -344,20 +603,53 @@ class PlaylistVisibilityEditor {
     showQueuedState(row) {
         const visibilityCell = row.querySelector('.tablecell-visibility');
         if (visibilityCell) {
+            // Clear any existing indicators
+            const existingIndicator = visibilityCell.querySelector('.ysve-queue-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            
             visibilityCell.style.opacity = '0.7';
             visibilityCell.style.borderLeft = '3px solid #2196F3';
+            visibilityCell.style.position = 'relative';
             
             // Add queue indicator
             const queueIndicator = document.createElement('div');
             queueIndicator.className = 'ysve-queue-indicator';
             queueIndicator.innerHTML = '⏳';
-            queueIndicator.style.position = 'absolute';
-            queueIndicator.style.top = '2px';
-            queueIndicator.style.right = '2px';
-            queueIndicator.style.fontSize = '12px';
+            queueIndicator.style.cssText = `
+                position: absolute;
+                top: 2px;
+                right: 2px;
+                fontSize: 12px;
+                background: rgba(33, 150, 243, 0.8);
+                color: white;
+                border-radius: 50%;
+                width: 16px;
+                height: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+            `;
             
-            visibilityCell.style.position = 'relative';
             visibilityCell.appendChild(queueIndicator);
+        }
+    }
+    
+    showLoadingState(row) {
+        const visibilityCell = row.querySelector('.tablecell-visibility');
+        if (visibilityCell) {
+            // Update existing queue indicator to loading state
+            const queueIndicator = visibilityCell.querySelector('.ysve-queue-indicator');
+            if (queueIndicator) {
+                queueIndicator.innerHTML = '🔄';
+                queueIndicator.style.background = 'rgba(255, 152, 0, 0.8)';
+            }
+            
+            visibilityCell.style.opacity = '0.5';
+            visibilityCell.style.borderLeft = '3px solid #FF9800';
+            visibilityCell.style.pointerEvents = 'none';
         }
     }
     
@@ -763,16 +1055,52 @@ class PlaylistVisibilityEditor {
         const visibilityCell = row.querySelector('.tablecell-visibility');
         if (!visibilityCell) return;
         
-        // Reset loading state
+        // Clear all processing states
+        const queueIndicator = visibilityCell.querySelector('.ysve-queue-indicator');
+        if (queueIndicator) {
+            queueIndicator.remove();
+        }
+        
+        // Reset styles
         visibilityCell.style.opacity = '1';
         visibilityCell.style.pointerEvents = 'auto';
+        visibilityCell.style.borderLeft = '';
         
-        // Update icon (this will be updated by YouTube's own refresh)
-        // Just add a success indicator
-        visibilityCell.style.borderLeft = '3px solid #00ff88';
+        // Show success indicator temporarily
+        visibilityCell.style.borderLeft = '3px solid #4CAF50';
+        visibilityCell.style.background = 'rgba(76, 175, 80, 0.1)';
+        
+        // Add success checkmark
+        const successIndicator = document.createElement('div');
+        successIndicator.innerHTML = '✅';
+        successIndicator.style.cssText = `
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 12px;
+            background: rgba(76, 175, 80, 0.8);
+            color: white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        `;
+        
+        visibilityCell.appendChild(successIndicator);
+        
+        // Remove success indicators after 2 seconds
         setTimeout(() => {
             visibilityCell.style.borderLeft = '';
+            visibilityCell.style.background = '';
+            if (successIndicator.parentNode) {
+                successIndicator.remove();
+            }
         }, 2000);
+        
+        console.log(`✅ Visual updated for ${newVisibility}`);
     }
 
     observeChanges() {

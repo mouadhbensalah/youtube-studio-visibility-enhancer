@@ -188,19 +188,58 @@
     }
 }
 
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-    #ysve-playlist-overlay {
-        background: #000;
-        border: 2px solid #fff;
-    }
-    
-    .ysve-hint {
-        border: 1px solid #666;
-    }
-    
-    .ysve-hint.ysve-active {
-        border: 2px solid #0066cc;
-        background: #0066cc;
-    }
+/* Manual Save Button */
+#ysve-manual-save {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(33, 150, 243, 0.95);
+    color: white;
+    padding: 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    z-index: 10001;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    transition: all 0.3s ease;
+    display: none;
+    min-width: 160px;
+}
+
+#ysve-manual-save:hover {
+    transform: scale(1.05);
+    background: rgba(33, 150, 243, 1);
+    box-shadow: 0 6px 25px rgba(0,0,0,0.4);
+}
+
+.ysve-save-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.ysve-save-icon {
+    font-size: 20px;
+}
+
+.ysve-save-text {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.ysve-save-count {
+    font-size: 11px;
+    opacity: 0.8;
+    background: rgba(255,255,255,0.2);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* Completed state indicator */
+.ysve-completed-state .tablecell-visibility {
+    border-left: 3px solid #9C27B0 !important;
+    background: rgba(156, 39, 176, 0.1) !important;
 }
