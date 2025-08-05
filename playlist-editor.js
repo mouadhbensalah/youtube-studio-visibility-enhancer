@@ -16,6 +16,9 @@ class PlaylistVisibilityEditor {
         this.batchResults = new Map();
         this.completedChanges = new Map();
         
+        // Smart position caching
+        this.videoPositions = new Map(); // videoId -> { scrollY, rowRect }
+        
         // YouTube state tracking
         this.changesSinceRefresh = 0;
         this.maxChangesBeforeReset = 1;
@@ -178,9 +181,67 @@ class PlaylistVisibilityEditor {
         if (pendingCount > 0) {
             this.saveButton.style.display = 'block';
             countEl.textContent = `${pendingCount} pending`;
+            
+            // Show cached positions info
+            const cachedCount = this.videoPositions.size;
+            if (cachedCount > 0) {
+                countEl.textContent = `${pendingCount} pending (${cachedCount} cached)`;
+            }
         } else {
             this.saveButton.style.display = 'none';
+            
+            // Clean up old cached positions when no pending changes
+            this.cleanupOldCachedPositions();
         }
+    }
+    
+    cleanupOldCachedPositions() {
+        // Remove cached positions older than 5 minutes
+        const maxAge = 5 * 60 * 1000; // 5 minutes
+        const now = Date.now();
+        
+        for (const [videoId, position] of this.videoPositions.entries()) {
+            if (now - position.timestamp > maxAge) {
+                console.log(`🧹 Cleaning up old cached position for ${videoId}`);
+                this.videoPositions.delete(videoId);
+            }
+        }
+    }
+    
+    // Enhanced position caching for better accuracy
+    cacheVideoPosition(videoId, row) {
+        try {
+            const rect = row.getBoundingClientRect();
+            const scrollY = window.scrollY;
+            
+            // Calculate more precise positioning data
+            const viewportHeight = window.innerHeight;
+            const documentHeight = document.documentElement.scrollHeight;
+            const scrollPercentage = scrollY / (documentHeight - viewportHeight);
+            
+            // Store comprehensive position info
+            this.videoPositions.set(videoId, {
+                scrollY: scrollY,
+                relativeTop: rect.top,
+                rowHeight: rect.height,
+                scrollPercentage: scrollPercentage,
+                viewportHeight: viewportHeight,
+                timestamp: Date.now(),
+                // Store some context for validation
+                rowIndex: this.getApproximateRowIndex(row)
+            });
+            
+            console.log(`📍 Cached enhanced position for ${videoId}: scroll=${scrollY} (${Math.round(scrollPercentage * 100)}%)`);
+            
+        } catch (error) {
+            console.warn(`Failed to cache position for ${videoId}:`, error);
+        }
+    }
+    
+    getApproximateRowIndex(row) {
+        // Get approximate row position for validation
+        const allRows = document.querySelectorAll('ytcp-video-row');
+        return Array.from(allRows).indexOf(row);
     }
 
     attachEventListeners() {
@@ -315,6 +376,9 @@ class PlaylistVisibilityEditor {
         
         console.log(`🎬 Queuing ${videoId}: ${currentVisibility} → ${newVisibility}`);
         
+        // Cache the current position when marking the video
+        this.cacheVideoPosition(videoId, row);
+        
         // Check if YouTube's change limit is reached OR if we're already processing
         if (this.changesSinceRefresh >= this.maxChangesBeforeReset || this.isProcessing) {
             console.log(`⚠️ YouTube change limit reached or currently processing. Storing for manual save.`);
@@ -326,6 +390,26 @@ class PlaylistVisibilityEditor {
         
         // Process immediately for first change
         this.queueVisibilityChange(row, videoId, newVisibility);
+    }
+    
+    cacheVideoPosition(videoId, row) {
+        try {
+            const rect = row.getBoundingClientRect();
+            const scrollY = window.scrollY;
+            
+            // Store both scroll position and relative position info
+            this.videoPositions.set(videoId, {
+                scrollY: scrollY,
+                relativeTop: rect.top,
+                rowHeight: rect.height,
+                timestamp: Date.now()
+            });
+            
+            console.log(`📍 Cached position for ${videoId}: scroll=${scrollY}, top=${rect.top}`);
+            
+        } catch (error) {
+            console.warn(`Failed to cache position for ${videoId}:`, error);
+        }
     }
 
     queueVisibilityChange(row, videoId, newVisibility) {
@@ -712,8 +796,45 @@ class PlaylistVisibilityEditor {
             return row;
         }
         
-        console.log(`🔍 Video ${videoId} not visible, searching with scroll...`);
+        // Check if we have a cached position for this video
+        const cachedPosition = this.videoPositions.get(videoId);
+        if (cachedPosition) {
+            console.log(`🎯 Using cached position for ${videoId}: scroll=${cachedPosition.scrollY}`);
+            
+            // Jump directly to the cached scroll position
+            window.scrollTo({
+                top: cachedPosition.scrollY,
+                behavior: 'smooth'
+            });
+            
+            // Wait for scroll to complete
+            await this.delay(800);
+            
+            // Try to find the row again
+            row = this.findRowByVideoId(videoId);
+            if (row) {
+                console.log(`✅ Found ${videoId} using cached position!`);
+                
+                // Fine-tune position to center the row
+                row.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+                
+                await this.delay(300);
+                return row;
+            } else {
+                console.log(`⚠️ Cached position didn't work for ${videoId}, falling back to search...`);
+            }
+        }
         
+        console.log(`🔍 Video ${videoId} not found with cache, searching with scroll...`);
+        
+        // Fallback to the original search method
+        return this.searchWithIncrementalScroll(videoId);
+    }
+    
+    async searchWithIncrementalScroll(videoId) {
         // Get current scroll position
         const startScrollY = window.scrollY;
         const maxScrollAttempts = 10;
@@ -737,9 +858,12 @@ class PlaylistVisibilityEditor {
             const isAtBottom = (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 100);
             
             // Try to find the row again
-            row = this.findRowByVideoId(videoId);
+            const row = this.findRowByVideoId(videoId);
             if (row) {
                 console.log(`✅ Found ${videoId} after scrolling (attempt ${attempt + 1})`);
+                
+                // Update the cached position with the correct one
+                this.cacheVideoPosition(videoId, row);
                 
                 // Scroll the specific row into view for better interaction
                 row.scrollIntoView({
