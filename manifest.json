@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "YouTube Studio Visibility Enhancer",
-  "version": "1.0.0",
-  "description": "Streamlines YouTube video visibility management with inline controls and batch operations",
+  "version": "2.0.0",
+  "description": "Streamline YouTube video visibility management with hotkeys and batch editing. Supports both individual videos and playlist management.",
   
   "permissions": [
     "activeTab",
@@ -15,19 +15,37 @@
   
   "content_scripts": [
     {
-      "matches": ["https://studio.youtube.com/*"],
+      "matches": [
+        "https://studio.youtube.com/video/*/edit*",
+        "https://studio.youtube.com/channel/*/videos/upload*"
+      ],
       "js": ["content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://studio.youtube.com/playlist/*/videos*"
+      ],
+      "js": ["playlist-editor.js"],
+      "css": ["playlist-editor.css"],
+      "run_at": "document_idle"
     }
   ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "YouTube Studio Visibility Enhancer"
+  },
   
   "background": {
     "service_worker": "background.js"
   },
   
-  "action": {
-    "default_popup": "popup.html",
-    "default_title": "YouTube Visibility Enhancer"
-  }
+  "web_accessible_resources": [
+    {
+      "resources": ["styles.css", "playlist-editor.css"],
+      "matches": ["https://studio.youtube.com/*"]
+    }
+  ]
 }

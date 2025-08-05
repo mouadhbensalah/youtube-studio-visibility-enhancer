@@ -1,0 +1,206 @@
+/* playlist-editor.css - Styles for Playlist Batch Editor */
+
+/* Enhanced video rows */
+.ysve-enhanced-row {
+    transition: background-color 0.2s ease;
+    position: relative;
+}
+
+.ysve-enhanced-row:hover {
+    background-color: rgba(33, 150, 243, 0.04) !important;
+    cursor: pointer;
+}
+
+/* Hover overlay */
+#ysve-playlist-overlay {
+    position: absolute;
+    display: none;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-width: 180px;
+    pointer-events: none;
+}
+
+/* Hotkey hints container */
+.ysve-hotkey-hints {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+/* Individual hotkey hint */
+.ysve-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.ysve-hint.ysve-active {
+    background: rgba(33, 150, 243, 0.2);
+    border-color: rgba(33, 150, 243, 0.4);
+}
+
+/* Hotkey number */
+.ysve-key {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 12px;
+    min-width: 16px;
+    text-align: center;
+}
+
+.ysve-hint.ysve-active .ysve-key {
+    background: rgba(33, 150, 243, 0.6);
+}
+
+/* Visibility label */
+.ysve-label {
+    color: #e0e0e0;
+    font-size: 13px;
+    font-weight: 500;
+    flex: 1;
+}
+
+.ysve-hint.ysve-active .ysve-label {
+    color: #fff;
+}
+
+/* Visibility icon */
+.ysve-icon {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.ysve-hint.ysve-active .ysve-icon {
+    opacity: 1;
+}
+
+/* Current status */
+.ysve-current-status {
+    font-size: 11px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ysve-status-private {
+    background: rgba(244, 67, 54, 0.2);
+    color: #ff8a80;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.ysve-status-unlisted {
+    background: rgba(255, 152, 0, 0.2);
+    color: #ffcc02;
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.ysve-status-public {
+    background: rgba(76, 175, 80, 0.2);
+    color: #a5d6a7;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+/* Loading and error states */
+.ysve-enhanced-row .tablecell-visibility {
+    transition: all 0.3s ease;
+}
+
+/* Success flash animation */
+@keyframes ysve-success-flash {
+    0% { background-color: rgba(76, 175, 80, 0.3); }
+    100% { background-color: transparent; }
+}
+
+.ysve-success-flash {
+    animation: ysve-success-flash 1s ease-out;
+}
+
+/* Error flash animation */
+@keyframes ysve-error-flash {
+    0% { background-color: rgba(244, 67, 54, 0.3); }
+    100% { background-color: transparent; }
+}
+
+.ysve-error-flash {
+    animation: ysve-error-flash 1s ease-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    #ysve-playlist-overlay {
+        transform: translateX(-100%);
+        margin-left: -16px;
+    }
+}
+
+/* Dark mode compatibility */
+@media (prefers-color-scheme: dark) {
+    #ysve-playlist-overlay {
+        background: rgba(18, 18, 18, 0.95);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+    
+    .ysve-hint {
+        background: rgba(255, 255, 255, 0.03);
+    }
+    
+    .ysve-key {
+        background: rgba(255, 255, 255, 0.08);
+    }
+}
+
+/* Integration with existing extension styles */
+.ysve-enhanced-row:hover .tablecell-visibility {
+    box-shadow: inset 0 0 0 2px rgba(33, 150, 243, 0.3);
+    border-radius: 4px;
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    .ysve-enhanced-row,
+    .ysve-hint,
+    .ysve-enhanced-row .tablecell-visibility {
+        transition: none;
+    }
+    
+    .ysve-success-flash,
+    .ysve-error-flash {
+        animation: none;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    #ysve-playlist-overlay {
+        background: #000;
+        border: 2px solid #fff;
+    }
+    
+    .ysve-hint {
+        border: 1px solid #666;
+    }
+    
+    .ysve-hint.ysve-active {
+        border: 2px solid #0066cc;
+        background: #0066cc;
+    }
+}
