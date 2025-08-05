@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "YouTube Studio Visibility Enhancer",
-  "version": "2.0.0",
-  "description": "Streamline YouTube video visibility management with hotkeys and batch editing. Premium bulk tab management and smart click interception.",
+  "version": "2.1.0",
+  "description": "Streamline YouTube video visibility management with hotkeys and batch editing. Premium bulk tab management, smart click interception, and auto page optimization.",
   
   "permissions": [
     "activeTab",
@@ -31,7 +31,13 @@
         "https://studio.youtube.com/playlist/*/edit*", 
         "https://studio.youtube.com/playlist/*/analytics*"
       ],
-      "js": ["playlist-editor.js", "bulk-tab-manager.js", "playlist-link-copier.js"],
+      "js": [
+        "playlist-editor.js", 
+        "bulk-tab-manager.js", 
+        "playlist-link-copier.js", 
+        "pagination-bypass.js",
+        "playlist-auto-optimizer.js"
+      ],
       "css": ["playlist-editor.css", "bulk-tab-manager.css"],
       "run_at": "document_idle"
     }
