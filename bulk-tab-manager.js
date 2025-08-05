@@ -6,6 +6,7 @@ class BulkTabManager {
         this.isActive = false;
         this.smartClickMode = false;
         this.openTabs = new Set();
+        this.tabDetails = new Map(); // Store tab info for smart closing
         this.originalScrollPosition = 0;
         this.bulkButton = null;
         this.clickInterceptor = null;
@@ -38,12 +39,12 @@ class BulkTabManager {
     async waitForPlaylistEditor() {
         return new Promise((resolve) => {
             const checkEditor = () => {
-                // Look for existing playlist editor elements
+                // Look for existing playlist editor elements OR just video rows
                 const existingOverlay = document.querySelector('#ysve-playlist-overlay');
                 const videoRows = document.querySelectorAll('ytcp-video-row');
                 
-                if (existingOverlay && videoRows.length > 0) {
-                    console.log('✅ Playlist editor detected, integrating bulk features...');
+                if (videoRows.length > 0) {
+                    console.log('✅ Video rows detected, setting up bulk features...');
                     resolve();
                 } else {
                     setTimeout(checkEditor, 200);
@@ -63,7 +64,21 @@ class BulkTabManager {
     createBulkControlPanel() {
         // Find optimal location in header area
         const headerArea = document.querySelector('#header, .video-table-content');
-        if (!headerArea) return;
+        if (!headerArea) {
+            console.warn('Header area not found, trying body');
+            const firstVideoRow = document.querySelector('ytcp-video-row');
+            if (firstVideoRow && firstVideoRow.parentElement) {
+                headerArea = firstVideoRow.parentElement;
+            } else {
+                return;
+            }
+        }
+
+        // Check if already exists
+        if (document.getElementById('ysve-bulk-controls')) {
+            console.log('Bulk controls already exist');
+            return;
+        }
 
         // Create bulk control container
         const bulkContainer = document.createElement('div');
@@ -131,13 +146,17 @@ class BulkTabManager {
         
         // Update video count
         this.updateVideoCount();
+        console.log('✅ Bulk control panel created and inserted');
     }
 
     attachBulkEventListeners() {
         // Open All Tabs button
-        document.getElementById('ysve-open-all-tabs')?.addEventListener('click', () => {
-            this.openAllTabsForEdit();
-        });
+        const openAllBtn = document.getElementById('ysve-open-all-tabs');
+        if (openAllBtn) {
+            openAllBtn.addEventListener('click', () => {
+                this.openAllTabsForEdit();
+            });
+        }
 
         // Filter buttons
         document.querySelectorAll('.ysve-filter-btn').forEach(btn => {
@@ -147,14 +166,20 @@ class BulkTabManager {
         });
 
         // Smart Click toggle
-        document.getElementById('ysve-smart-click-toggle')?.addEventListener('click', () => {
-            this.toggleSmartClickMode();
-        });
+        const smartClickBtn = document.getElementById('ysve-smart-click-toggle');
+        if (smartClickBtn) {
+            smartClickBtn.addEventListener('click', () => {
+                this.toggleSmartClickMode();
+            });
+        }
 
         // Close All Tabs button
-        document.getElementById('ysve-close-all-tabs')?.addEventListener('click', () => {
-            this.closeAllEditTabs();
-        });
+        const closeAllBtn = document.getElementById('ysve-close-all-tabs');
+        if (closeAllBtn) {
+            closeAllBtn.addEventListener('click', () => {
+                this.closeAllEditTabs();
+            });
+        }
     }
 
     updateVideoCount() {
@@ -309,8 +334,16 @@ class BulkTabManager {
         if (!editLink) return;
         
         const videoId = this.getVideoId(row);
+        const videoTitle = this.getVideoTitle(row);
+        
         if (videoId) {
             this.openTabs.add(videoId);
+            // Store detailed tab info for smart closing
+            this.tabDetails.set(videoId, {
+                url: editLink.href,
+                title: videoTitle,
+                openedAt: Date.now()
+            });
         }
         
         // Open in background tab - browser will not switch focus
@@ -321,7 +354,7 @@ class BulkTabManager {
         
         // Track tab for potential closing
         if (newTab) {
-            console.log(`📂 Opened edit tab for video: ${videoId} (background mode)`);
+            console.log(`📂 Opened edit tab for video: ${videoId} (${videoTitle}) - background mode`);
         }
     }
 
@@ -332,6 +365,20 @@ class BulkTabManager {
         const href = editLink.href;
         const match = href.match(/\/video\/([^\/]+)\/edit/);
         return match ? match[1] : null;
+    }
+
+    getVideoTitle(row) {
+        const titleElement = row.querySelector('.video-title, [id*="video-title"], .title');
+        return titleElement ? titleElement.textContent.trim() : 'Unknown Video';
+    }
+
+    getVideoTitleFromLink(link) {
+        // Try to find title from the closest row
+        const row = link.closest('ytcp-video-row');
+        if (row) {
+            return this.getVideoTitle(row);
+        }
+        return 'Unknown Video';
     }
 
     setupSmartClickInterception() {
@@ -353,10 +400,15 @@ class BulkTabManager {
                 // Immediately return focus to current tab (this ensures you stay here)
                 window.focus();
                 
-                // Track the opened tab
+                // Track the opened tab with details
                 const videoId = this.getVideoIdFromUrl(link.href);
                 if (videoId) {
                     this.openTabs.add(videoId);
+                    this.tabDetails.set(videoId, {
+                        url: link.href,
+                        title: this.getVideoTitleFromLink(link),
+                        openedAt: Date.now()
+                    });
                     this.updateTabCounter();
                 }
                 
@@ -498,16 +550,17 @@ class BulkTabManager {
     }
 
     closeAllEditTabs() {
-        // Note: Due to browser security, we can't directly close tabs we opened
-        // But we can provide helpful guidance
-        
         const tabCount = this.openTabs.size;
         if (tabCount === 0) {
             this.showTemporaryMessage('No edit tabs to close', 2000);
             return;
         }
 
-        // Show helpful modal with instructions
+        // Show smart tab closing interface
+        this.showSmartTabCloser();
+    }
+
+    showSmartTabCloser() {
         const modal = document.createElement('div');
         modal.style.cssText = `
             position: fixed;
@@ -520,46 +573,151 @@ class BulkTabManager {
             display: flex;
             align-items: center;
             justify-content: center;
+            backdrop-filter: blur(5px);
         `;
         
+        // Create tab list for smart closing
+        const tabList = Array.from(this.tabDetails.entries()).map(([videoId, details]) => {
+            const timeAgo = Math.round((Date.now() - details.openedAt) / 1000);
+            return `
+                <div style="
+                    display: flex;
+                    align-items: center;
+                    padding: 8px 12px;
+                    margin: 4px 0;
+                    background: #f8f9fa;
+                    border-radius: 6px;
+                    border-left: 3px solid #1976d2;
+                ">
+                    <span style="font-size: 12px; color: #666; margin-right: 8px;">${timeAgo}s ago</span>
+                    <span style="flex: 1; font-size: 13px; color: #333;">${details.title.substring(0, 50)}${details.title.length > 50 ? '...' : ''}</span>
+                    <code style="background: #e9ecef; padding: 2px 6px; border-radius: 3px; font-size: 10px; color: #495057;">${videoId}</code>
+                </div>
+            `;
+        }).join('');
+
         modal.innerHTML = `
             <div class="modal-content" style="
                 background: white;
                 padding: 24px;
                 border-radius: 12px;
-                max-width: 500px;
+                max-width: 600px;
+                max-height: 80vh;
+                overflow-y: auto;
                 text-align: center;
                 box-shadow: 0 8px 32px rgba(0,0,0,0.3);
                 position: relative;
             ">
-                <h3 style="margin-top: 0; color: #1976d2;">🗂️ Close Edit Tabs</h3>
-                <p>To close all edit tabs, use one of these methods:</p>
-                <div style="text-align: left; margin: 16px 0; background: #f5f5f5; padding: 16px; border-radius: 8px;">
-                    <strong>📋 Chrome:</strong><br>
-                    • Right-click any edit tab → "Close other tabs"<br>
-                    • Or: Ctrl+Shift+W to close current tab<br><br>
-                    <strong>🔍 Or search:</strong><br>
-                    • Type "studio.youtube.com/video" in address bar<br>
-                    • Chrome will show all edit tabs for easy closing
+                <h3 style="margin-top: 0; color: #1976d2;">🗂️ Smart Tab Closer</h3>
+                <p style="color: #666; margin-bottom: 20px;">Found ${this.openTabs.size} edit tabs to close:</p>
+                
+                <div style="
+                    max-height: 300px;
+                    overflow-y: auto;
+                    text-align: left;
+                    margin: 16px 0;
+                    padding: 12px;
+                    background: #ffffff;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                ">
+                    ${tabList}
                 </div>
-                <button class="close-modal-btn" style="background: #1976d2; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer;">
-                    Got it!
-                </button>
+                
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
+                    <button class="copy-urls-btn" style="
+                        background: #28a745;
+                        color: white;
+                        border: none;
+                        padding: 12px 20px;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        font-weight: 600;
+                    ">
+                        📋 Copy All URLs
+                    </button>
+                    
+                    <button class="open-tab-manager-btn" style="
+                        background: #17a2b8;
+                        color: white;
+                        border: none;
+                        padding: 12px 20px;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        font-weight: 600;
+                    ">
+                        🔧 Tab Manager
+                    </button>
+                    
+                    <button class="close-modal-btn" style="
+                        background: #6c757d;
+                        color: white;
+                        border: none;
+                        padding: 12px 20px;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        font-weight: 600;
+                    ">
+                        Cancel
+                    </button>
+                </div>
+                
+                <div style="
+                    margin-top: 16px;
+                    padding: 12px;
+                    background: #e7f3ff;
+                    border-radius: 6px;
+                    text-align: left;
+                    font-size: 13px;
+                    color: #0c5460;
+                ">
+                    <strong>💡 Pro Tips:</strong><br>
+                    • <strong>Copy URLs:</strong> Paste in address bar to see all tabs<br>
+                    • <strong>Tab Manager:</strong> Chrome's built-in tab management<br>
+                    • <strong>Keyboard:</strong> Ctrl+Shift+A → "Close tabs to the right"
+                </div>
             </div>
         `;
         
-        // Add click event listeners for closing
+        // Add event listeners
+        const copyBtn = modal.querySelector('.copy-urls-btn');
+        const tabManagerBtn = modal.querySelector('.open-tab-manager-btn');
         const closeBtn = modal.querySelector('.close-modal-btn');
-        const modalContent = modal.querySelector('.modal-content');
         
-        // Close on button click
+        // Copy all URLs to clipboard
+        copyBtn.addEventListener('click', () => {
+            const urls = Array.from(this.tabDetails.values()).map(details => details.url);
+            navigator.clipboard.writeText(urls.join('\n')).then(() => {
+                copyBtn.innerHTML = '✅ Copied!';
+                copyBtn.style.background = '#28a745';
+                setTimeout(() => {
+                    copyBtn.innerHTML = '📋 Copy All URLs';
+                }, 2000);
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = urls.join('\n');
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                copyBtn.innerHTML = '✅ Copied!';
+            });
+        });
+        
+        // Open Chrome tab manager
+        tabManagerBtn.addEventListener('click', () => {
+            this.showTemporaryMessage('Press Ctrl+Shift+A for Chrome tab search', 3000);
+        });
+        
+        // Close modal
         closeBtn.addEventListener('click', () => {
             modal.remove();
         });
         
-        // Close on background click (clicking outside modal content)
+        // Close on background click
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) { // Only if clicking the background, not the content
+            if (e.target === modal) {
                 modal.remove();
             }
         });
@@ -575,9 +733,12 @@ class BulkTabManager {
         
         document.body.appendChild(modal);
         
-        // Clear our tracking
-        this.openTabs.clear();
-        this.updateTabCounter();
+        // Clear our tracking after showing the interface
+        setTimeout(() => {
+            this.openTabs.clear();
+            this.tabDetails.clear();
+            this.updateTabCounter();
+        }, 1000);
     }
 
     setupKeyboardShortcuts() {
