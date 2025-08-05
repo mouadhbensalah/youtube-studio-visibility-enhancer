@@ -405,7 +405,7 @@ class BulkTabManager {
             // Change cursor for video links
             this.addSmartClickStyles();
             
-            this.showTemporaryMessage('🎯 Smart Click Mode: ON - Background tabs, stay in list', 3000);
+            this.showTemporaryMessage('🎯 Smart Click Mode: ON - All clicks open background tabs!', 3000);
             
         } else {
             // Disable smart click mode
@@ -416,7 +416,7 @@ class BulkTabManager {
             // Remove cursor styles
             this.removeSmartClickStyles();
             
-            this.showTemporaryMessage('🎯 Smart Click Mode: OFF - Normal navigation', 2000);
+            this.showTemporaryMessage('🎯 Smart Click Mode: OFF - Normal click navigation', 2000);
         }
     }
 
@@ -430,7 +430,7 @@ class BulkTabManager {
             }
             
             .ysve-smart-click-active a[href*="/video/"][href*="/edit"]:hover::after {
-                content: "🎯 Background Tab";
+                content: "🎯 Click = Background Tab";
                 position: absolute;
                 top: -30px;
                 left: 50%;
@@ -523,13 +523,14 @@ class BulkTabManager {
         `;
         
         modal.innerHTML = `
-            <div style="
+            <div class="modal-content" style="
                 background: white;
                 padding: 24px;
                 border-radius: 12px;
                 max-width: 500px;
                 text-align: center;
                 box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+                position: relative;
             ">
                 <h3 style="margin-top: 0; color: #1976d2;">🗂️ Close Edit Tabs</h3>
                 <p>To close all edit tabs, use one of these methods:</p>
@@ -541,12 +542,36 @@ class BulkTabManager {
                     • Type "studio.youtube.com/video" in address bar<br>
                     • Chrome will show all edit tabs for easy closing
                 </div>
-                <button onclick="this.closest('[style*=\"position: fixed\"]').remove()" 
-                        style="background: #1976d2; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer;">
+                <button class="close-modal-btn" style="background: #1976d2; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer;">
                     Got it!
                 </button>
             </div>
         `;
+        
+        // Add click event listeners for closing
+        const closeBtn = modal.querySelector('.close-modal-btn');
+        const modalContent = modal.querySelector('.modal-content');
+        
+        // Close on button click
+        closeBtn.addEventListener('click', () => {
+            modal.remove();
+        });
+        
+        // Close on background click (clicking outside modal content)
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) { // Only if clicking the background, not the content
+                modal.remove();
+            }
+        });
+        
+        // Close on Escape key
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
         
         document.body.appendChild(modal);
         
