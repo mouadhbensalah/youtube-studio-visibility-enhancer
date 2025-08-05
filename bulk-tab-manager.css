@@ -1,0 +1,409 @@
+/* bulk-tab-manager.css - Premium Bulk Controls Styling */
+
+/* Main bulk control panel */
+#ysve-bulk-controls {
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.05), rgba(103, 58, 183, 0.05));
+    border: 1px solid rgba(33, 150, 243, 0.2);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
+}
+
+.ysve-bulk-panel {
+    padding: 16px 20px;
+}
+
+/* Header section */
+.ysve-bulk-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(33, 150, 243, 0.1);
+}
+
+.ysve-bulk-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.ysve-bulk-icon {
+    font-size: 20px;
+}
+
+.ysve-bulk-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1976d2;
+}
+
+.ysve-beta-badge {
+    background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    box-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
+}
+
+.ysve-bulk-stats {
+    font-size: 13px;
+    color: #666;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(33, 150, 243, 0.1);
+}
+
+/* Action groups */
+.ysve-bulk-actions {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.ysve-action-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+    min-width: 300px;
+}
+
+/* Bulk buttons */
+.ysve-bulk-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.ysve-bulk-btn:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.ysve-bulk-btn:hover:before {
+    left: 100%;
+}
+
+/* Primary button (Open All) */
+.ysve-bulk-btn.primary {
+    background: linear-gradient(135deg, #1976d2, #1565c0);
+    color: white;
+    box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+}
+
+.ysve-bulk-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(25, 118, 210, 0.4);
+}
+
+.ysve-bulk-btn.primary:active {
+    transform: translateY(0);
+}
+
+.ysve-bulk-btn.primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Secondary button (Smart Click) */
+.ysve-bulk-btn.secondary {
+    background: linear-gradient(135deg, #673ab7, #5e35b1);
+    color: white;
+    box-shadow: 0 4px 12px rgba(103, 58, 183, 0.3);
+}
+
+.ysve-bulk-btn.secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(103, 58, 183, 0.4);
+}
+
+.ysve-bulk-btn.secondary.active {
+    background: linear-gradient(135deg, #4caf50, #43a047);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+/* Tertiary button (Close All) */
+.ysve-bulk-btn.tertiary {
+    background: linear-gradient(135deg, #757575, #616161);
+    color: white;
+    box-shadow: 0 4px 12px rgba(117, 117, 117, 0.3);
+}
+
+.ysve-bulk-btn.tertiary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(117, 117, 117, 0.4);
+}
+
+.ysve-bulk-btn.tertiary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Button icons and text */
+.ysve-btn-icon {
+    font-size: 16px;
+}
+
+.ysve-btn-text {
+    flex: 1;
+    text-align: left;
+}
+
+.ysve-btn-count,
+.ysve-tab-count {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.ysve-toggle-status {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 24px;
+    text-align: center;
+}
+
+/* Filter options */
+.ysve-bulk-options {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ysve-filter-btn {
+    padding: 6px 12px;
+    border: 1px solid rgba(33, 150, 243, 0.3);
+    background: rgba(255, 255, 255, 0.8);
+    color: #1976d2;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.ysve-filter-btn:hover {
+    background: rgba(33, 150, 243, 0.1);
+    border-color: rgba(33, 150, 243, 0.5);
+}
+
+.ysve-filter-btn.active {
+    background: linear-gradient(135deg, #1976d2, #1565c0);
+    color: white;
+    border-color: #1976d2;
+    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+}
+
+/* Progress bar */
+.ysve-bulk-progress {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(33, 150, 243, 0.1);
+}
+
+.ysve-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(33, 150, 243, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.ysve-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #1976d2, #2196f3);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 0%;
+    box-shadow: 0 0 10px rgba(33, 150, 243, 0.3);
+}
+
+.ysve-progress-text {
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+}
+
+/* Smart click mode active styles */
+.ysve-smart-click-active ytcp-video-row {
+    position: relative;
+}
+
+.ysve-smart-click-active a[href*="/video/"][href*="/edit"] {
+    position: relative;
+}
+
+.ysve-smart-click-active a[href*="/video/"][href*="/edit"]:hover::after {
+    content: "🎯 New Tab";
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(5px);
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+    .ysve-bulk-actions {
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .ysve-action-group {
+        min-width: unset;
+    }
+    
+    .ysve-bulk-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 768px) {
+    .ysve-bulk-panel {
+        padding: 12px 16px;
+    }
+    
+    .ysve-bulk-btn {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+    
+    .ysve-bulk-options {
+        justify-content: center;
+    }
+    
+    .ysve-filter-btn {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+}
+
+/* Dark mode compatibility */
+@media (prefers-color-scheme: dark) {
+    #ysve-bulk-controls {
+        background: linear-gradient(135deg, rgba(33, 150, 243, 0.08), rgba(103, 58, 183, 0.08));
+        border-color: rgba(33, 150, 243, 0.3);
+    }
+    
+    .ysve-bulk-header {
+        border-bottom-color: rgba(33, 150, 243, 0.2);
+    }
+    
+    .ysve-bulk-stats {
+        background: rgba(0, 0, 0, 0.3);
+        color: #ccc;
+    }
+    
+    .ysve-filter-btn {
+        background: rgba(0, 0, 0, 0.3);
+        border-color: rgba(33, 150, 243, 0.4);
+        color: #90caf9;
+    }
+    
+    .ysve-filter-btn:hover {
+        background: rgba(33, 150, 243, 0.15);
+    }
+}
+
+/* Animation keyframes */
+@keyframes ysve-bulk-panel-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#ysve-bulk-controls {
+    animation: ysve-bulk-panel-slide-in 0.4s ease-out;
+}
+
+/* Integration with existing styles */
+.ysve-enhanced-row:hover {
+    background-color: rgba(33, 150, 243, 0.04) !important;
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    .ysve-bulk-btn,
+    .ysve-filter-btn,
+    .ysve-progress-fill {
+        transition: none;
+    }
+    
+    .ysve-bulk-btn:hover {
+        transform: none;
+    }
+    
+    #ysve-bulk-controls {
+        animation: none;
+    }
+}
+
+/* Focus indicators for accessibility */
+.ysve-bulk-btn:focus,
+.ysve-filter-btn:focus {
+    outline: 2px solid #2196f3;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    #ysve-bulk-controls {
+        border-width: 2px;
+    }
+    
+    .ysve-bulk-btn {
+        border: 2px solid currentColor;
+    }
+}

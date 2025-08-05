@@ -1,0 +1,694 @@
+// bulk-tab-manager.js - Premium Bulk Tab Opening & Smart Click Management
+// Integrates with existing playlist-editor.js architecture
+
+class BulkTabManager {
+    constructor() {
+        this.isActive = false;
+        this.smartClickMode = false;
+        this.openTabs = new Set();
+        this.originalScrollPosition = 0;
+        this.bulkButton = null;
+        this.clickInterceptor = null;
+        
+        // Integration with existing playlist editor
+        this.playlistEditor = null;
+        
+        this.init();
+    }
+
+    init() {
+        // Only activate on playlist pages
+        if (!this.isPlaylistEditPage()) return;
+        
+        console.log('🚀 Bulk Tab Manager: Initializing premium features...');
+        
+        // Wait for existing playlist editor to load
+        this.waitForPlaylistEditor().then(() => {
+            this.setupBulkControls();
+            this.setupSmartClickInterception();
+            this.setupKeyboardShortcuts();
+        });
+    }
+
+    isPlaylistEditPage() {
+        const url = window.location.href;
+        return url.includes('/playlist/') && url.includes('/videos');
+    }
+
+    async waitForPlaylistEditor() {
+        return new Promise((resolve) => {
+            const checkEditor = () => {
+                // Look for existing playlist editor elements
+                const existingOverlay = document.querySelector('#ysve-playlist-overlay');
+                const videoRows = document.querySelectorAll('ytcp-video-row');
+                
+                if (existingOverlay && videoRows.length > 0) {
+                    console.log('✅ Playlist editor detected, integrating bulk features...');
+                    resolve();
+                } else {
+                    setTimeout(checkEditor, 200);
+                }
+            };
+            checkEditor();
+        });
+    }
+
+    setupBulkControls() {
+        // Create premium bulk control panel
+        this.createBulkControlPanel();
+        this.attachBulkEventListeners();
+        console.log('✅ Bulk controls ready');
+    }
+
+    createBulkControlPanel() {
+        // Find optimal location in header area
+        const headerArea = document.querySelector('#header, .video-table-content');
+        if (!headerArea) return;
+
+        // Create bulk control container
+        const bulkContainer = document.createElement('div');
+        bulkContainer.id = 'ysve-bulk-controls';
+        bulkContainer.innerHTML = `
+            <div class="ysve-bulk-panel">
+                <div class="ysve-bulk-header">
+                    <div class="ysve-bulk-title">
+                        <span class="ysve-bulk-icon">🚀</span>
+                        <span class="ysve-bulk-text">Premium Bulk Editor</span>
+                        <span class="ysve-beta-badge">PREMIUM</span>
+                    </div>
+                    <div class="ysve-bulk-stats">
+                        <span id="ysve-video-count">0 videos</span>
+                    </div>
+                </div>
+                
+                <div class="ysve-bulk-actions">
+                    <div class="ysve-action-group">
+                        <button id="ysve-open-all-tabs" class="ysve-bulk-btn primary">
+                            <span class="ysve-btn-icon">📂</span>
+                            <span class="ysve-btn-text">Open All for Edit</span>
+                            <span class="ysve-btn-count">(0)</span>
+                        </button>
+                        
+                        <div class="ysve-bulk-options">
+                            <button id="ysve-filter-private" class="ysve-filter-btn" data-filter="private">
+                                🔒 Private Only
+                            </button>
+                            <button id="ysve-filter-unlisted" class="ysve-filter-btn" data-filter="unlisted">
+                                🔗 Unlisted Only
+                            </button>
+                            <button id="ysve-filter-public" class="ysve-filter-btn" data-filter="public">
+                                🌍 Public Only
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="ysve-action-group">
+                        <button id="ysve-smart-click-toggle" class="ysve-bulk-btn secondary">
+                            <span class="ysve-btn-icon">🎯</span>
+                            <span class="ysve-btn-text">Smart Click Mode</span>
+                            <span class="ysve-toggle-status">OFF</span>
+                        </button>
+                        
+                        <button id="ysve-close-all-tabs" class="ysve-bulk-btn tertiary" disabled>
+                            <span class="ysve-btn-icon">🗂️</span>
+                            <span class="ysve-btn-text">Close All Edit Tabs</span>
+                            <span class="ysve-tab-count">(0)</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="ysve-bulk-progress" style="display: none;">
+                    <div class="ysve-progress-bar">
+                        <div class="ysve-progress-fill"></div>
+                    </div>
+                    <div class="ysve-progress-text">Opening tabs...</div>
+                </div>
+            </div>
+        `;
+
+        // Insert at the top of the video table
+        headerArea.insertBefore(bulkContainer, headerArea.firstChild);
+        
+        // Update video count
+        this.updateVideoCount();
+    }
+
+    attachBulkEventListeners() {
+        // Open All Tabs button
+        document.getElementById('ysve-open-all-tabs')?.addEventListener('click', () => {
+            this.openAllTabsForEdit();
+        });
+
+        // Filter buttons
+        document.querySelectorAll('.ysve-filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.toggleFilter(e.target.dataset.filter);
+            });
+        });
+
+        // Smart Click toggle
+        document.getElementById('ysve-smart-click-toggle')?.addEventListener('click', () => {
+            this.toggleSmartClickMode();
+        });
+
+        // Close All Tabs button
+        document.getElementById('ysve-close-all-tabs')?.addEventListener('click', () => {
+            this.closeAllEditTabs();
+        });
+    }
+
+    updateVideoCount() {
+        const allVideos = document.querySelectorAll('ytcp-video-row');
+        const filteredVideos = this.getFilteredVideos();
+        
+        const countEl = document.getElementById('ysve-video-count');
+        const btnCountEl = document.querySelector('#ysve-open-all-tabs .ysve-btn-count');
+        
+        if (countEl) {
+            countEl.textContent = `${allVideos.length} videos`;
+        }
+        
+        if (btnCountEl) {
+            btnCountEl.textContent = `(${filteredVideos.length})`;
+        }
+    }
+
+    getFilteredVideos() {
+        const allRows = Array.from(document.querySelectorAll('ytcp-video-row'));
+        const activeFilters = document.querySelectorAll('.ysve-filter-btn.active');
+        
+        if (activeFilters.length === 0) {
+            return allRows; // No filters = all videos
+        }
+        
+        return allRows.filter(row => {
+            const visibility = this.getCurrentVisibility(row);
+            return Array.from(activeFilters).some(filter => {
+                const filterType = filter.dataset.filter.toUpperCase();
+                return visibility === filterType;
+            });
+        });
+    }
+
+    getCurrentVisibility(row) {
+        const visibilityCell = row.querySelector('.tablecell-visibility');
+        if (!visibilityCell) return 'UNKNOWN';
+        
+        // Check icon classes to determine current visibility
+        if (visibilityCell.querySelector('.privacy-public-icon')) return 'PUBLIC';
+        if (visibilityCell.querySelector('.lock-icon')) return 'PRIVATE';
+        if (visibilityCell.querySelector('.link-icon')) return 'UNLISTED';
+        
+        return 'UNKNOWN';
+    }
+
+    toggleFilter(filterType) {
+        const filterBtn = document.querySelector(`[data-filter="${filterType}"]`);
+        if (!filterBtn) return;
+        
+        filterBtn.classList.toggle('active');
+        this.updateVideoCount();
+        
+        // Visual feedback
+        const activeFilters = document.querySelectorAll('.ysve-filter-btn.active');
+        if (activeFilters.length > 0) {
+            const filterText = Array.from(activeFilters).map(btn => 
+                btn.textContent.trim()
+            ).join(', ');
+            
+            this.showTemporaryMessage(`Filter: ${filterText}`, 2000);
+        } else {
+            this.showTemporaryMessage('All videos selected', 1500);
+        }
+    }
+
+    async openAllTabsForEdit() {
+        const videos = this.getFilteredVideos();
+        
+        if (videos.length === 0) {
+            this.showTemporaryMessage('No videos to open', 2000);
+            return;
+        }
+
+        // Confirm large batch operations
+        if (videos.length > 20) {
+            const confirmed = confirm(
+                `🚀 BULK TAB OPERATION\n\n` +
+                `This will open ${videos.length} tabs for editing.\n` +
+                `Large numbers of tabs may slow your browser.\n\n` +
+                `Continue with opening ${videos.length} edit tabs?`
+            );
+            
+            if (!confirmed) return;
+        }
+
+        // Store original scroll position
+        this.originalScrollPosition = window.scrollY;
+        
+        // Show progress
+        this.showBulkProgress(videos.length);
+        
+        // Disable button during operation
+        const btn = document.getElementById('ysve-open-all-tabs');
+        const originalText = btn.querySelector('.ysve-btn-text').textContent;
+        btn.disabled = true;
+        btn.querySelector('.ysve-btn-text').textContent = 'Opening...';
+
+        try {
+            await this.openTabsInBatches(videos);
+            
+            // Success feedback
+            this.showTemporaryMessage(
+                `✅ Opened ${videos.length} edit tabs successfully!`, 
+                3000
+            );
+            
+            // Enable close tabs button
+            const closeBtn = document.getElementById('ysve-close-all-tabs');
+            if (closeBtn) {
+                closeBtn.disabled = false;
+                closeBtn.querySelector('.ysve-tab-count').textContent = `(${videos.length})`;
+            }
+            
+        } catch (error) {
+            console.error('Error opening tabs:', error);
+            this.showTemporaryMessage('❌ Error opening some tabs', 3000);
+        } finally {
+            // Restore button
+            btn.disabled = false;
+            btn.querySelector('.ysve-btn-text').textContent = originalText;
+            this.hideBulkProgress();
+        }
+    }
+
+    async openTabsInBatches(videos) {
+        const batchSize = 8; // Open 8 tabs at a time to avoid browser limits
+        const delay = 150; // ms between each tab
+        
+        for (let i = 0; i < videos.length; i += batchSize) {
+            const batch = videos.slice(i, i + batchSize);
+            
+            // Open current batch
+            await Promise.all(batch.map(async (row, index) => {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        this.openVideoEditTab(row);
+                        resolve();
+                    }, index * delay);
+                });
+            }));
+            
+            // Update progress
+            this.updateBulkProgress(Math.min(i + batchSize, videos.length), videos.length);
+            
+            // Brief pause between batches
+            if (i + batchSize < videos.length) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }
+    }
+
+    openVideoEditTab(row) {
+        const editLink = row.querySelector('a[href*="/video/"][href*="/edit"]');
+        if (!editLink) return;
+        
+        const videoId = this.getVideoId(row);
+        if (videoId) {
+            this.openTabs.add(videoId);
+        }
+        
+        // Open in new tab with window.open for better control
+        const newTab = window.open(editLink.href, '_blank', 'noopener,noreferrer');
+        
+        // Track tab for potential closing
+        if (newTab) {
+            console.log(`📂 Opened edit tab for video: ${videoId}`);
+        }
+    }
+
+    getVideoId(row) {
+        const editLink = row.querySelector('a[href*="/video/"][href*="/edit"]');
+        if (!editLink) return null;
+        
+        const href = editLink.href;
+        const match = href.match(/\/video\/([^\/]+)\/edit/);
+        return match ? match[1] : null;
+    }
+
+    setupSmartClickInterception() {
+        console.log('🎯 Setting up smart click interception...');
+        
+        // Create click interceptor
+        this.clickInterceptor = (e) => {
+            if (!this.smartClickMode) return;
+            
+            // Check if this is a video edit link
+            const link = e.target.closest('a[href*="/video/"][href*="/edit"]');
+            if (link) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Convert to Ctrl+click behavior (open in new tab)
+                window.open(link.href, '_blank', 'noopener,noreferrer');
+                
+                // Visual feedback
+                this.showClickFeedback(e.target);
+                
+                console.log('🎯 Smart click: Opened in new tab instead of navigation');
+            }
+        };
+        
+        // Don't attach yet - only when smart mode is enabled
+    }
+
+    toggleSmartClickMode() {
+        this.smartClickMode = !this.smartClickMode;
+        
+        const btn = document.getElementById('ysve-smart-click-toggle');
+        const statusEl = btn.querySelector('.ysve-toggle-status');
+        
+        if (this.smartClickMode) {
+            // Enable smart click mode
+            document.addEventListener('click', this.clickInterceptor, true);
+            btn.classList.add('active');
+            statusEl.textContent = 'ON';
+            
+            // Change cursor for video links
+            this.addSmartClickStyles();
+            
+            this.showTemporaryMessage('🎯 Smart Click Mode: ON - Links open in new tabs', 3000);
+            
+        } else {
+            // Disable smart click mode
+            document.removeEventListener('click', this.clickInterceptor, true);
+            btn.classList.remove('active');
+            statusEl.textContent = 'OFF';
+            
+            // Remove cursor styles
+            this.removeSmartClickStyles();
+            
+            this.showTemporaryMessage('🎯 Smart Click Mode: OFF - Normal navigation', 2000);
+        }
+    }
+
+    addSmartClickStyles() {
+        const style = document.createElement('style');
+        style.id = 'ysve-smart-click-styles';
+        style.textContent = `
+            .ysve-smart-click-active a[href*="/video/"][href*="/edit"] {
+                cursor: pointer !important;
+                position: relative;
+            }
+            
+            .ysve-smart-click-active a[href*="/video/"][href*="/edit"]:hover::after {
+                content: "🎯 New Tab";
+                position: absolute;
+                top: -30px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0,0,0,0.8);
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 11px;
+                white-space: nowrap;
+                z-index: 1000;
+                pointer-events: none;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Add class to body for styling
+        document.body.classList.add('ysve-smart-click-active');
+    }
+
+    removeSmartClickStyles() {
+        const style = document.getElementById('ysve-smart-click-styles');
+        if (style) style.remove();
+        
+        document.body.classList.remove('ysve-smart-click-active');
+    }
+
+    showClickFeedback(element) {
+        // Brief visual feedback for smart clicks
+        const feedback = document.createElement('div');
+        feedback.style.cssText = `
+            position: fixed;
+            top: ${element.getBoundingClientRect().top}px;
+            left: ${element.getBoundingClientRect().left}px;
+            background: rgba(33, 150, 243, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            z-index: 10000;
+            pointer-events: none;
+            animation: ysve-click-feedback 1s ease-out forwards;
+        `;
+        feedback.textContent = '🎯 New Tab';
+        
+        // Add animation keyframes if not exists
+        if (!document.getElementById('ysve-click-feedback-animation')) {
+            const animationStyle = document.createElement('style');
+            animationStyle.id = 'ysve-click-feedback-animation';
+            animationStyle.textContent = `
+                @keyframes ysve-click-feedback {
+                    0% { opacity: 1; transform: scale(1); }
+                    100% { opacity: 0; transform: scale(1.2) translateY(-10px); }
+                }
+            `;
+            document.head.appendChild(animationStyle);
+        }
+        
+        document.body.appendChild(feedback);
+        setTimeout(() => feedback.remove(), 1000);
+    }
+
+    closeAllEditTabs() {
+        // Note: Due to browser security, we can't directly close tabs we opened
+        // But we can provide helpful guidance
+        
+        const tabCount = this.openTabs.size;
+        if (tabCount === 0) {
+            this.showTemporaryMessage('No edit tabs to close', 2000);
+            return;
+        }
+
+        // Show helpful modal with instructions
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 10002;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        modal.innerHTML = `
+            <div style="
+                background: white;
+                padding: 24px;
+                border-radius: 12px;
+                max-width: 500px;
+                text-align: center;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            ">
+                <h3 style="margin-top: 0; color: #1976d2;">🗂️ Close Edit Tabs</h3>
+                <p>To close all edit tabs, use one of these methods:</p>
+                <div style="text-align: left; margin: 16px 0; background: #f5f5f5; padding: 16px; border-radius: 8px;">
+                    <strong>📋 Chrome:</strong><br>
+                    • Right-click any edit tab → "Close other tabs"<br>
+                    • Or: Ctrl+Shift+W to close current tab<br><br>
+                    <strong>🔍 Or search:</strong><br>
+                    • Type "studio.youtube.com/video" in address bar<br>
+                    • Chrome will show all edit tabs for easy closing
+                </div>
+                <button onclick="this.closest('[style*=\"position: fixed\"]').remove()" 
+                        style="background: #1976d2; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer;">
+                    Got it!
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Clear our tracking
+        this.openTabs.clear();
+        
+        // Disable close button
+        const closeBtn = document.getElementById('ysve-close-all-tabs');
+        if (closeBtn) {
+            closeBtn.disabled = true;
+            closeBtn.querySelector('.ysve-tab-count').textContent = '(0)';
+        }
+    }
+
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Only on playlist pages and not when typing
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            switch(e.key) {
+                case 'B':
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        this.openAllTabsForEdit();
+                    }
+                    break;
+                case 'T':
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        this.toggleSmartClickMode();
+                    }
+                    break;
+            }
+        });
+        
+        console.log('⌨️ Keyboard shortcuts active: Ctrl+B (bulk tabs), Ctrl+T (smart click)');
+    }
+
+    showBulkProgress(total) {
+        const progressEl = document.querySelector('.ysve-bulk-progress');
+        if (progressEl) {
+            progressEl.style.display = 'block';
+            this.updateBulkProgress(0, total);
+        }
+    }
+
+    updateBulkProgress(current, total) {
+        const progressFill = document.querySelector('.ysve-progress-fill');
+        const progressText = document.querySelector('.ysve-progress-text');
+        
+        if (progressFill && progressText) {
+            const percentage = (current / total) * 100;
+            progressFill.style.width = `${percentage}%`;
+            progressText.textContent = `Opening ${current}/${total} tabs...`;
+        }
+    }
+
+    hideBulkProgress() {
+        const progressEl = document.querySelector('.ysve-bulk-progress');
+        if (progressEl) {
+            progressEl.style.display = 'none';
+        }
+    }
+
+    showTemporaryMessage(message, duration = 2000) {
+        // Create floating message
+        const messageEl = document.createElement('div');
+        messageEl.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(33, 150, 243, 0.95);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 10001;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            animation: ysve-message-slide-in 0.3s ease-out;
+        `;
+        messageEl.textContent = message;
+        
+        // Add slide animation if not exists
+        if (!document.getElementById('ysve-message-animation')) {
+            const animationStyle = document.createElement('style');
+            animationStyle.id = 'ysve-message-animation';
+            animationStyle.textContent = `
+                @keyframes ysve-message-slide-in {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes ysve-message-slide-out {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(animationStyle);
+        }
+        
+        document.body.appendChild(messageEl);
+        
+        // Auto-remove after duration
+        setTimeout(() => {
+            messageEl.style.animation = 'ysve-message-slide-out 0.3s ease-out';
+            setTimeout(() => messageEl.remove(), 300);
+        }, duration);
+    }
+
+    // Integration with existing mutation observer
+    observeChanges() {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === 1) {
+                        if (node.matches && node.matches('ytcp-video-row')) {
+                            this.updateVideoCount();
+                        } else if (node.querySelector) {
+                            const newRows = node.querySelectorAll('ytcp-video-row');
+                            if (newRows.length > 0) {
+                                this.updateVideoCount();
+                            }
+                        }
+                    }
+                });
+            });
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    destroy() {
+        // Clean up event listeners and elements
+        if (this.clickInterceptor) {
+            document.removeEventListener('click', this.clickInterceptor, true);
+        }
+        
+        this.removeSmartClickStyles();
+        
+        const bulkControls = document.getElementById('ysve-bulk-controls');
+        if (bulkControls) {
+            bulkControls.remove();
+        }
+        
+        console.log('🧹 Bulk Tab Manager: Cleaned up');
+    }
+}
+
+// Initialize bulk tab manager when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        // Small delay to let playlist editor initialize first
+        setTimeout(() => {
+            new BulkTabManager();
+        }, 500);
+    });
+} else {
+    setTimeout(() => {
+        new BulkTabManager();
+    }, 500);
+}
+
+// Listen for navigation changes (YouTube SPA)
+let lastBulkUrl = location.href;
+new MutationObserver(() => {
+    const url = location.href;
+    if (url !== lastBulkUrl) {
+        lastBulkUrl = url;
+        // Small delay to allow page to load
+        setTimeout(() => {
+            new BulkTabManager();
+        }, 1000);
+    }
+}).observe(document, { subtree: true, childList: true });
