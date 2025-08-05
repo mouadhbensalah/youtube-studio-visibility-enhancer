@@ -106,35 +106,42 @@ class YouTubeVisibilityEnhancer {
     container.className = 'yt-visibility-enhanced-container';
     container.innerHTML = `
       <div class="yt-visibility-enhanced-header">
-        <h3>🚨 Quick Visibility (SAFE MODE)</h3>
+        <div class="header-main">
+          <div class="header-icon">🚀</div>
+          <h3>Quick Visibility</h3>
+          <div class="safe-mode-badge">SAFE MODE</div>
+        </div>
         <div class="yt-visibility-shortcuts">
           <kbd>1</kbd> Private · <kbd>2</kbd> Unlisted · <kbd>3</kbd> Public ⚠️
         </div>
       </div>
       <div class="yt-visibility-enhanced-controls">
-        <label class="yt-visibility-option" data-value="PRIVATE">
-          <input type="radio" name="visibility" value="PRIVATE">
-          <span class="radio-custom"></span>
-          <span class="label-text">
-            <strong>Private</strong>
-            <small>Only you can see</small>
-          </span>
+        <label class="yt-visibility-option" data-value="PRIVATE" title="Only you can see this video. Perfect for drafts and private content.">
+          <div class="radio-section">
+            <input type="radio" name="visibility" value="PRIVATE">
+            <span class="radio-custom"></span>
+          </div>
+          <div class="label-section">
+            <strong>🔒 Private</strong>
+          </div>
         </label>
-        <label class="yt-visibility-option" data-value="UNLISTED">
-          <input type="radio" name="visibility" value="UNLISTED">
-          <span class="radio-custom"></span>
-          <span class="label-text">
-            <strong>Unlisted</strong>
-            <small>Anyone with link</small>
-          </span>
+        <label class="yt-visibility-option" data-value="UNLISTED" title="Anyone with the link can view. Good for sharing with specific people.">
+          <div class="radio-section">
+            <input type="radio" name="visibility" value="UNLISTED">
+            <span class="radio-custom"></span>
+          </div>
+          <div class="label-section">
+            <strong>🔗 Unlisted</strong>
+          </div>
         </label>
-        <label class="yt-visibility-option" data-value="PUBLIC">
-          <input type="radio" name="visibility" value="PUBLIC">
-          <span class="radio-custom"></span>
-          <span class="label-text">
+        <label class="yt-visibility-option" data-value="PUBLIC" title="⚠️ EVERYONE on YouTube can find and watch this video!">
+          <div class="radio-section">
+            <input type="radio" name="visibility" value="PUBLIC">
+            <span class="radio-custom"></span>
+          </div>
+          <div class="label-section">
             <strong>⚠️ Public</strong>
-            <small>EVERYONE can see!</small>
-          </span>
+          </div>
         </label>
       </div>
       <div class="yt-visibility-status">
