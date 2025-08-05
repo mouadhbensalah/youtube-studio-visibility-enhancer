@@ -85,32 +85,42 @@ class PlaylistLinkCopier {
             return;
         }
 
-        // Find the playlist title in the sidebar (where "⚗️ Chimie Organique ~ 2ème Prépa" appears)
-        const playlistTitleElement = document.querySelector('#entity-name, .entity-name');
+        // Find the main menu list (where Details, Videos, Analytics are)
+        const mainMenu = document.querySelector('#main-menu');
         
-        if (!playlistTitleElement) {
-            console.warn('📋 Could not find playlist title element in sidebar');
+        if (!mainMenu) {
+            console.warn('📋 Could not find main menu in sidebar');
             return;
         }
 
-        // Create the copy button container
-        const buttonContainer = document.createElement('div');
-        buttonContainer.id = 'ysve-copy-playlist-container';
-        buttonContainer.style.cssText = `
-            margin: 8px 0 12px 0;
-            padding: 0;
+        // Create a new menu item that matches YouTube's style
+        const menuItem = document.createElement('li');
+        menuItem.role = 'presentation';
+        menuItem.className = 'style-scope ytcp-navigation-drawer';
+        menuItem.id = 'ysve-copy-playlist-menu-item';
+
+        menuItem.innerHTML = `
+            <ytcp-ve track-click="" class="style-scope ytcp-navigation-drawer" role="none">
+                <button id="ysve-copy-playlist-btn" class="menu-item-link ysve-copy-playlist-button style-scope ytcp-navigation-drawer" role="menuitem">
+                    <tp-yt-paper-icon-item role="button" tabindex="-1" class="style-scope ytcp-navigation-drawer" style-target="host" aria-disabled="false">
+                        <div id="contentIcon" class="content-icon style-scope tp-yt-paper-icon-item">
+                            <div class="ysve-copy-icon style-scope ytcp-navigation-drawer">📋</div>
+                        </div>
+                        <div class="nav-item-text ysve-copy-text style-scope ytcp-navigation-drawer">Copy Playlist Link</div>
+                        <div class="ysve-author-credit" style="font-size: 9px; opacity: 0.5; margin-left: auto; padding-right: 8px;">Himrab</div>
+                    </tp-yt-paper-icon-item>
+                </button>
+            </ytcp-ve>
         `;
 
-        buttonContainer.innerHTML = `
-            <button id="ysve-copy-playlist-btn" class="ysve-copy-playlist-button">
-                <div class="ysve-copy-icon">📋</div>
-                <div class="ysve-copy-text">Copy Playlist Link</div>
-                <div class="ysve-copy-status">📋</div>
-            </button>
-        `;
-
-        // Insert right after the playlist title
-        playlistTitleElement.parentNode.insertBefore(buttonContainer, playlistTitleElement.nextSibling);
+        // Insert after the "Videos" menu item (which is usually the second item)
+        const videoMenuItem = mainMenu.children[1]; // Videos is typically the 2nd item
+        if (videoMenuItem && videoMenuItem.nextSibling) {
+            mainMenu.insertBefore(menuItem, videoMenuItem.nextSibling);
+        } else {
+            // Fallback: append to the end
+            mainMenu.appendChild(menuItem);
+        }
 
         // Add styles
         this.addCopyButtonStyles();
@@ -118,7 +128,7 @@ class PlaylistLinkCopier {
         // Add event listener
         this.attachCopyButtonListener();
 
-        console.log('✅ Copy playlist button created and inserted after playlist title');
+        console.log('✅ Copy playlist button created as menu item');
     }
 
     addCopyButtonStyles() {
@@ -131,62 +141,71 @@ class PlaylistLinkCopier {
                 width: 100%;
                 display: flex;
                 align-items: center;
-                gap: 8px;
-                padding: 8px 12px;
-                background: rgba(33, 150, 243, 0.08);
-                border: 1px solid rgba(33, 150, 243, 0.2);
-                border-radius: 6px;
+                background: transparent;
+                border: none;
                 cursor: pointer;
                 transition: all 0.2s ease;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                font-family: inherit;
                 color: inherit;
                 text-align: left;
-                font-size: 12px;
+                padding: 0;
+                text-decoration: none;
             }
 
             .ysve-copy-playlist-button:hover {
-                background: rgba(33, 150, 243, 0.12);
-                border-color: rgba(33, 150, 243, 0.3);
-                transform: translateY(-1px);
-                box-shadow: 0 2px 6px rgba(33, 150, 243, 0.15);
+                background: rgba(33, 150, 243, 0.08);
             }
 
             .ysve-copy-playlist-button:active {
-                transform: translateY(0);
-                box-shadow: 0 1px 3px rgba(33, 150, 243, 0.2);
+                background: rgba(33, 150, 243, 0.12);
             }
 
             .ysve-copy-icon {
-                font-size: 14px;
-                min-width: 16px;
-                text-align: center;
+                font-size: 20px;
+                width: 24px;
+                height: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            /* Better alignment with YouTube's native menu items */
+            .ysve-copy-playlist-button .content-icon {
+                margin-right: 24px;
+                margin-left: 0;
+                padding-left: 0;
+            }
+
+            .ysve-copy-playlist-button tp-yt-paper-icon-item {
+                padding-left: 16px;
+                padding-right: 16px;
             }
 
             .ysve-copy-text {
                 flex: 1;
-                font-weight: 500;
-                color: #1976d2;
+                font-size: 14px;
+                color: inherit;
                 min-width: 0;
             }
 
-            .ysve-copy-status {
-                font-size: 12px;
-                opacity: 0.7;
-                transition: all 0.3s ease;
+            .ysve-author-credit {
+                transition: opacity 0.2s ease;
+            }
+
+            .ysve-copy-playlist-button:hover .ysve-author-credit {
+                opacity: 0.3;
             }
 
             /* Success state */
             .ysve-copy-playlist-button.success {
                 background: rgba(76, 175, 80, 0.1);
-                border-color: rgba(76, 175, 80, 0.3);
             }
 
             .ysve-copy-playlist-button.success .ysve-copy-text {
                 color: #4caf50;
             }
 
-            .ysve-copy-playlist-button.success .ysve-copy-status {
-                opacity: 1;
+            .ysve-copy-playlist-button.success .ysve-copy-icon {
                 transform: scale(1.1);
             }
 
@@ -241,11 +260,11 @@ class PlaylistLinkCopier {
 
     async copyPlaylistLink() {
         const button = document.getElementById('ysve-copy-playlist-btn');
-        const statusIcon = button.querySelector('.ysve-copy-status');
+        const iconEl = button.querySelector('.ysve-copy-icon');
         const titleEl = button.querySelector('.ysve-copy-text');
         
         const originalTitle = titleEl.textContent;
-        const originalIcon = statusIcon.textContent;
+        const originalIcon = iconEl.textContent;
 
         try {
             // Copy to clipboard
@@ -253,8 +272,7 @@ class PlaylistLinkCopier {
             
             // Success feedback
             button.classList.add('success');
-            statusIcon.textContent = '✅';
-            statusIcon.classList.add('animate');
+            iconEl.textContent = '✅';
             titleEl.textContent = 'Link Copied!';
             
             // Log for debugging
@@ -263,8 +281,7 @@ class PlaylistLinkCopier {
             // Reset after 2.5 seconds
             setTimeout(() => {
                 button.classList.remove('success');
-                statusIcon.classList.remove('animate');
-                statusIcon.textContent = originalIcon;
+                iconEl.textContent = originalIcon;
                 titleEl.textContent = originalTitle;
             }, 2500);
             
@@ -275,7 +292,7 @@ class PlaylistLinkCopier {
             this.fallbackCopy();
             
             // Error feedback
-            statusIcon.textContent = '⚠️';
+            iconEl.textContent = '⚠️';
             titleEl.textContent = 'Copy Failed';
             
             // Show the link in console for manual copy
@@ -283,7 +300,7 @@ class PlaylistLinkCopier {
             
             // Reset after 3 seconds
             setTimeout(() => {
-                statusIcon.textContent = originalIcon;
+                iconEl.textContent = originalIcon;
                 titleEl.textContent = originalTitle;
             }, 3000);
         }
@@ -324,9 +341,9 @@ class PlaylistLinkCopier {
                     }, 1000);
                 } else {
                     // Remove button if we're no longer on a playlist page
-                    const container = document.getElementById('ysve-copy-playlist-container');
-                    if (container) {
-                        container.remove();
+                    const menuItem = document.getElementById('ysve-copy-playlist-menu-item');
+                    if (menuItem) {
+                        menuItem.remove();
                     }
                 }
             }
@@ -335,9 +352,9 @@ class PlaylistLinkCopier {
 
     destroy() {
         // Clean up
-        const container = document.getElementById('ysve-copy-playlist-container');
-        if (container) {
-            container.remove();
+        const menuItem = document.getElementById('ysve-copy-playlist-menu-item');
+        if (menuItem) {
+            menuItem.remove();
         }
         
         const styles = document.getElementById('ysve-copy-playlist-styles');
