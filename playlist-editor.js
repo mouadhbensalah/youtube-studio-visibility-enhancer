@@ -103,6 +103,9 @@ class PlaylistVisibilityEditor {
                 <div class="ysve-save-icon">💾</div>
                 <div class="ysve-save-text">Save All Changes</div>
                 <div class="ysve-save-count">0 pending</div>
+                <div class="ysve-progress-bar" style="display: none;">
+                    <div class="ysve-progress-fill"></div>
+                </div>
             </div>
         `;
         
@@ -125,11 +128,45 @@ class PlaylistVisibilityEditor {
             min-width: 160px;
         `;
         
+        // Add progress bar styles
+        const progressBarStyle = document.createElement('style');
+        progressBarStyle.textContent = `
+            .ysve-progress-bar {
+                width: 100%;
+                height: 4px;
+                background: rgba(255,255,255,0.2);
+                border-radius: 2px;
+                margin-top: 8px;
+                overflow: hidden;
+            }
+            .ysve-progress-fill {
+                height: 100%;
+                background: rgba(255,255,255,0.8);
+                border-radius: 2px;
+                transition: width 0.3s ease;
+                width: 0%;
+            }
+        `;
+        document.head.appendChild(progressBarStyle);
+        
         this.saveButton.addEventListener('click', () => {
             this.processAllPendingChanges();
         });
         
         document.body.appendChild(this.saveButton);
+    }
+    
+    updateProgress(current, total) {
+        const progressBar = this.saveButton.querySelector('.ysve-progress-bar');
+        const progressFill = this.saveButton.querySelector('.ysve-progress-fill');
+        
+        if (total > 0) {
+            progressBar.style.display = 'block';
+            const percentage = (current / total) * 100;
+            progressFill.style.width = `${percentage}%`;
+        } else {
+            progressBar.style.display = 'none';
+        }
     }
 
     updateSaveButton() {
@@ -585,6 +622,9 @@ class PlaylistVisibilityEditor {
         saveText.textContent = 'Processing...';
         this.saveButton.style.pointerEvents = 'none';
         
+        // Store original scroll position
+        const originalScrollY = window.scrollY;
+        
         // Convert to array to avoid modification during iteration
         const changesToProcess = Array.from(this.completedChanges.entries());
         let successCount = 0;
@@ -595,11 +635,13 @@ class PlaylistVisibilityEditor {
                 const [videoId, newVisibility] = changesToProcess[i];
                 
                 console.log(`📋 Processing ${i + 1}/${changesToProcess.length}: ${videoId} → ${newVisibility}`);
+                saveText.textContent = `Processing ${i + 1}/${changesToProcess.length}...`;
+                this.updateProgress(i, changesToProcess.length);
                 
-                // Find fresh row reference (DOM may have changed)
-                const row = this.findRowByVideoId(videoId);
+                // Find row with auto-scroll if needed
+                const row = await this.findRowByVideoIdWithScroll(videoId);
                 if (!row) {
-                    console.warn(`❌ Row not found for video ${videoId}, skipping`);
+                    console.warn(`❌ Row not found for video ${videoId} even after scrolling, skipping`);
                     errorCount++;
                     continue;
                 }
@@ -608,6 +650,9 @@ class PlaylistVisibilityEditor {
                     await this.triggerVisibilityChangeWithRetry(row, videoId, newVisibility);
                     successCount++;
                     console.log(`✅ Successfully processed ${videoId}`);
+                    
+                    // Update progress
+                    this.updateProgress(i + 1, changesToProcess.length);
                     
                     // Longer delay between changes to let YouTube settle
                     if (i < changesToProcess.length - 1) {
@@ -623,6 +668,12 @@ class PlaylistVisibilityEditor {
                     await this.delay(500);
                 }
             }
+            
+            // Restore original scroll position
+            window.scrollTo({
+                top: originalScrollY,
+                behavior: 'smooth'
+            });
             
             // Clear completed changes
             this.completedChanges.clear();
@@ -644,7 +695,73 @@ class PlaylistVisibilityEditor {
             console.error('Critical error in batch processing:', error);
             saveText.textContent = 'Error - Try Again';
             this.saveButton.style.pointerEvents = 'auto';
+            
+            // Restore scroll position on error too
+            window.scrollTo({
+                top: originalScrollY,
+                behavior: 'smooth'
+            });
         }
+    }
+    
+    async findRowByVideoIdWithScroll(videoId) {
+        // First, try to find the row without scrolling
+        let row = this.findRowByVideoId(videoId);
+        if (row) {
+            console.log(`📍 Found ${videoId} without scrolling`);
+            return row;
+        }
+        
+        console.log(`🔍 Video ${videoId} not visible, searching with scroll...`);
+        
+        // Get current scroll position
+        const startScrollY = window.scrollY;
+        const maxScrollAttempts = 10;
+        const scrollStep = window.innerHeight * 0.8; // Scroll ~80% of viewport height
+        
+        for (let attempt = 0; attempt < maxScrollAttempts; attempt++) {
+            // Scroll down to load more content
+            const targetScrollY = startScrollY + (scrollStep * (attempt + 1));
+            
+            console.log(`📜 Scroll attempt ${attempt + 1}: scrolling to ${targetScrollY}`);
+            
+            window.scrollTo({
+                top: targetScrollY,
+                behavior: 'smooth'
+            });
+            
+            // Wait for scroll to complete and content to load
+            await this.delay(800);
+            
+            // Check if we've reached the bottom
+            const isAtBottom = (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 100);
+            
+            // Try to find the row again
+            row = this.findRowByVideoId(videoId);
+            if (row) {
+                console.log(`✅ Found ${videoId} after scrolling (attempt ${attempt + 1})`);
+                
+                // Scroll the specific row into view for better interaction
+                row.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+                
+                // Wait for scroll to complete
+                await this.delay(500);
+                
+                return row;
+            }
+            
+            // If we've reached the bottom and still haven't found it, give up
+            if (isAtBottom) {
+                console.log(`🔚 Reached bottom of page, video ${videoId} not found`);
+                break;
+            }
+        }
+        
+        console.log(`❌ Could not find video ${videoId} after ${maxScrollAttempts} scroll attempts`);
+        return null;
     }
     
     async triggerVisibilityChangeWithRetry(row, videoId, newVisibility, retryCount = 0) {
