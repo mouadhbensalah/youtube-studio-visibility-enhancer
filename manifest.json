@@ -2,11 +2,11 @@
   "manifest_version": 3,
   "name": "YouTube Studio Visibility Enhancer",
   "version": "2.0.0",
-  "description": "Premium batch editing for YouTube Studio with bulk tab management and smart click interception",
+  "description": "Streamline YouTube video visibility management with hotkeys and batch editing. Premium bulk tab management and smart click interception.",
   
   "permissions": [
-    "storage",
     "activeTab",
+    "storage",
     "tabs",
     "notifications"
   ],
@@ -15,33 +15,38 @@
     "https://studio.youtube.com/*"
   ],
   
-  "background": {
-    "service_worker": "background.js"
-  },
-  
   "content_scripts": [
     {
-      "matches": ["https://studio.youtube.com/video/*/edit*"],
+      "matches": [
+        "https://studio.youtube.com/video/*/edit*",
+        "https://studio.youtube.com/channel/*/videos/upload*"
+      ],
       "js": ["content.js"],
       "css": ["styles.css"],
-      "run_at": "document_end"
+      "run_at": "document_idle"
     },
     {
-      "matches": ["https://studio.youtube.com/playlist/*/videos*"],
+      "matches": [
+        "https://studio.youtube.com/playlist/*/videos*"
+      ],
       "js": ["playlist-editor.js", "bulk-tab-manager.js"],
       "css": ["playlist-editor.css", "bulk-tab-manager.css"],
-      "run_at": "document_end"
+      "run_at": "document_idle"
     }
   ],
   
   "action": {
     "default_popup": "popup.html",
-    "default_title": "YouTube Visibility Enhancer"
+    "default_title": "YouTube Studio Visibility Enhancer"
+  },
+  
+  "background": {
+    "service_worker": "background.js"
   },
   
   "web_accessible_resources": [
     {
-      "resources": ["*.js", "*.css"],
+      "resources": ["styles.css", "playlist-editor.css", "bulk-tab-manager.css"],
       "matches": ["https://studio.youtube.com/*"]
     }
   ]
