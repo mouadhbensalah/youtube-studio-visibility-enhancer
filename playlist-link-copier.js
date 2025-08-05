@@ -5,6 +5,7 @@ class PlaylistLinkCopier {
     constructor() {
         this.playlistUrl = null;
         this.copyButton = null;
+        this.globalShortcutHandler = null;
         this.init();
     }
 
@@ -18,6 +19,7 @@ class PlaylistLinkCopier {
         this.waitForSidebar().then(() => {
             this.extractPlaylistUrl();
             this.createCopyButton();
+            this.setupGlobalShortcut();
         });
     }
 
@@ -30,9 +32,9 @@ class PlaylistLinkCopier {
         return new Promise((resolve) => {
             const checkSidebar = () => {
                 const sidebar = document.querySelector('#left-nav');
-                const entityContainer = document.querySelector('#entity-label-container');
+                const mainMenu = document.querySelector('#main-menu');
                 
-                if (sidebar && entityContainer) {
+                if (sidebar && mainMenu) {
                     console.log('✅ Sidebar detected, extracting playlist info...');
                     resolve();
                 } else {
@@ -107,7 +109,7 @@ class PlaylistLinkCopier {
                             <div class="ysve-copy-icon style-scope ytcp-navigation-drawer">📋</div>
                         </div>
                         <div class="nav-item-text ysve-copy-text style-scope ytcp-navigation-drawer">Copy Playlist Link</div>
-                        <div class="ysve-author-credit" style="font-size: 9px; opacity: 0.5; margin-left: auto; padding-right: 8px;">Himrab</div>
+                        <div class="ysve-author-credit" style="font-size: 9px; opacity: 0.5; margin-left: auto; padding-right: 8px;">Salih</div>
                     </tp-yt-paper-icon-item>
                 </button>
             </ytcp-ve>
@@ -153,43 +155,58 @@ class PlaylistLinkCopier {
             }
 
             .ysve-copy-playlist-button:hover {
-                background: rgba(33, 150, 243, 0.08);
+                background: rgba(96, 96, 96, 0.08);
+            }
+
+            .ysve-copy-playlist-button:hover .ysve-copy-icon,
+            .ysve-copy-playlist-button:hover .ysve-copy-text {
+                color: rgba(96, 96, 96, 1);
             }
 
             .ysve-copy-playlist-button:active {
-                background: rgba(33, 150, 243, 0.12);
+                background: rgba(96, 96, 96, 0.12);
             }
 
             .ysve-copy-icon {
-                font-size: 20px;
+                font-size: 18px;
                 width: 24px;
                 height: 24px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                color: rgba(96, 96, 96, 0.88);
             }
 
             /* Better alignment with YouTube's native menu items */
             .ysve-copy-playlist-button .content-icon {
                 margin-right: 24px;
-                margin-left: 0;
+                margin-left: -20px;
                 padding-left: 0;
+                width: 24px;
             }
 
             .ysve-copy-playlist-button tp-yt-paper-icon-item {
-                padding-left: 16px;
+                padding-left: 0;
                 padding-right: 16px;
+                margin-left: -20px;
+                display: flex;
+                align-items: center;
             }
 
             .ysve-copy-text {
                 flex: 1;
                 font-size: 14px;
-                color: inherit;
+                font-weight: 400;
+                color: rgba(96, 96, 96, 0.88);
                 min-width: 0;
+                letter-spacing: 0.25px;
             }
 
             .ysve-author-credit {
                 transition: opacity 0.2s ease;
+                font-size: 8px;
+                color: rgba(96, 96, 96, 0.6);
+                font-weight: 300;
             }
 
             .ysve-copy-playlist-button:hover .ysve-author-credit {
@@ -211,35 +228,13 @@ class PlaylistLinkCopier {
 
             /* Dark mode compatibility */
             @media (prefers-color-scheme: dark) {
-                .ysve-copy-playlist-button {
-                    background: rgba(33, 150, 243, 0.12);
-                    border-color: rgba(33, 150, 243, 0.25);
-                }
-
                 .ysve-copy-playlist-button:hover {
-                    background: rgba(33, 150, 243, 0.18);
-                    border-color: rgba(33, 150, 243, 0.35);
-                }
-
-                .ysve-copy-subtitle {
-                    color: #ccc;
+                    background: rgba(255, 255, 255, 0.08);
                 }
 
                 .ysve-copy-playlist-button.success {
                     background: rgba(76, 175, 80, 0.15);
-                    border-color: rgba(76, 175, 80, 0.35);
                 }
-            }
-
-            /* Animation for status change */
-            @keyframes ysve-copy-success {
-                0% { transform: scale(1); }
-                50% { transform: scale(1.2); }
-                100% { transform: scale(1); }
-            }
-
-            .ysve-copy-status.animate {
-                animation: ysve-copy-success 0.4s ease-out;
             }
         `;
 
@@ -256,6 +251,31 @@ class PlaylistLinkCopier {
             
             await this.copyPlaylistLink();
         });
+    }
+
+    setupGlobalShortcut() {
+        // Global Ctrl+C shortcut for copying playlist link
+        this.globalShortcutHandler = (e) => {
+            // Only trigger if Ctrl+C is pressed and we're not in an input field
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c' && 
+                !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) &&
+                !e.target.isContentEditable) {
+                
+                // Check if there's any text selected on the page
+                const selection = window.getSelection();
+                if (selection && selection.toString().length > 0) {
+                    // Let default copy behavior handle selected text
+                    return;
+                }
+                
+                // No text selected, copy playlist link instead
+                e.preventDefault();
+                this.copyPlaylistLinkGlobal();
+            }
+        };
+        
+        document.addEventListener('keydown', this.globalShortcutHandler);
+        console.log('⌨️ Global Ctrl+C shortcut active for playlist link copying');
     }
 
     async copyPlaylistLink() {
@@ -306,6 +326,78 @@ class PlaylistLinkCopier {
         }
     }
 
+    async copyPlaylistLinkGlobal() {
+        if (!this.playlistUrl) return;
+        
+        try {
+            await navigator.clipboard.writeText(this.playlistUrl);
+            
+            // Show temporary notification
+            this.showGlobalCopyNotification();
+            
+            console.log('📋 Playlist link copied via Ctrl+C:', this.playlistUrl);
+            
+        } catch (error) {
+            console.error('📋 Failed to copy playlist link via Ctrl+C:', error);
+            this.fallbackCopy();
+        }
+    }
+
+    showGlobalCopyNotification() {
+        // Create temporary notification
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(76, 175, 80, 0.95);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            animation: slideInRight 0.3s ease-out;
+        `;
+        
+        notification.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span>📋</span>
+                <span>Playlist link copied!</span>
+                <span style="opacity: 0.7; font-size: 12px;">Ctrl+C</span>
+            </div>
+        `;
+        
+        // Add slide animation
+        if (!document.getElementById('ysve-global-copy-animation')) {
+            const animationStyle = document.createElement('style');
+            animationStyle.id = 'ysve-global-copy-animation';
+            animationStyle.textContent = `
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOutRight {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(animationStyle);
+        }
+        
+        document.body.appendChild(notification);
+        
+        // Auto-remove after 2.5 seconds
+        setTimeout(() => {
+            notification.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 2500);
+    }
+
     fallbackCopy() {
         // Fallback method for older browsers
         try {
@@ -337,6 +429,7 @@ class PlaylistLinkCopier {
                         this.extractPlaylistUrl();
                         if (!document.getElementById('ysve-copy-playlist-btn')) {
                             this.createCopyButton();
+                            this.setupGlobalShortcut();
                         }
                     }, 1000);
                 } else {
@@ -360,6 +453,16 @@ class PlaylistLinkCopier {
         const styles = document.getElementById('ysve-copy-playlist-styles');
         if (styles) {
             styles.remove();
+        }
+        
+        const animationStyles = document.getElementById('ysve-global-copy-animation');
+        if (animationStyles) {
+            animationStyles.remove();
+        }
+        
+        // Remove global shortcut listener
+        if (this.globalShortcutHandler) {
+            document.removeEventListener('keydown', this.globalShortcutHandler);
         }
         
         console.log('🧹 Playlist Link Copier: Cleaned up');

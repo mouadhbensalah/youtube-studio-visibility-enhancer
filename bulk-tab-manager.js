@@ -90,7 +90,7 @@ class BulkTabManager {
                         <span class="ysve-bulk-icon">🚀</span>
                         <span class="ysve-bulk-text">Premium Bulk Editor</span>
                         <span class="ysve-beta-badge">PREMIUM</span>
-                        <span class="ysve-author-small" style="margin-left: 8px; font-size: 10px; opacity: 0.6;">by Himrab</span>
+                        <span class="ysve-author-small" style="margin-left: 8px; font-size: 10px; opacity: 0.6;">by Salih</span>
                     </div>
                     <div class="ysve-bulk-stats">
                         <span id="ysve-video-count">0 videos</span>
