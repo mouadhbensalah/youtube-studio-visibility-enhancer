@@ -27,9 +27,11 @@
     },
     {
       "matches": [
-        "https://studio.youtube.com/playlist/*/videos*"
+        "https://studio.youtube.com/playlist/*/videos*",
+        "https://studio.youtube.com/playlist/*/edit*", 
+        "https://studio.youtube.com/playlist/*/analytics*"
       ],
-      "js": ["playlist-editor.js", "bulk-tab-manager.js"],
+      "js": ["playlist-editor.js", "bulk-tab-manager.js", "playlist-link-copier.js"],
       "css": ["playlist-editor.css", "bulk-tab-manager.css"],
       "run_at": "document_idle"
     }
