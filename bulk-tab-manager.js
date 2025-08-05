@@ -264,11 +264,7 @@ class BulkTabManager {
             );
             
             // Enable close tabs button
-            const closeBtn = document.getElementById('ysve-close-all-tabs');
-            if (closeBtn) {
-                closeBtn.disabled = false;
-                closeBtn.querySelector('.ysve-tab-count').textContent = `(${videos.length})`;
-            }
+            this.updateTabCounter();
             
         } catch (error) {
             console.error('Error opening tabs:', error);
@@ -317,12 +313,15 @@ class BulkTabManager {
             this.openTabs.add(videoId);
         }
         
-        // Open in new tab with window.open for better control
+        // Open in background tab - browser will not switch focus
         const newTab = window.open(editLink.href, '_blank', 'noopener,noreferrer');
+        
+        // Ensure current tab maintains focus
+        window.focus();
         
         // Track tab for potential closing
         if (newTab) {
-            console.log(`📂 Opened edit tab for video: ${videoId}`);
+            console.log(`📂 Opened edit tab for video: ${videoId} (background mode)`);
         }
     }
 
@@ -348,17 +347,47 @@ class BulkTabManager {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // Convert to Ctrl+click behavior (open in new tab)
-                window.open(link.href, '_blank', 'noopener,noreferrer');
+                // Open in background tab (don't switch focus)
+                const newTab = window.open(link.href, '_blank', 'noopener,noreferrer');
                 
-                // Visual feedback
-                this.showClickFeedback(e.target);
+                // Immediately return focus to current tab (this ensures you stay here)
+                window.focus();
                 
-                console.log('🎯 Smart click: Opened in new tab instead of navigation');
+                // Track the opened tab
+                const videoId = this.getVideoIdFromUrl(link.href);
+                if (videoId) {
+                    this.openTabs.add(videoId);
+                    this.updateTabCounter();
+                }
+                
+                // Visual feedback with tab count
+                this.showClickFeedback(e.target, this.openTabs.size);
+                
+                console.log(`🎯 Smart click: Opened ${videoId} in background tab (${this.openTabs.size} total)`);
             }
         };
         
         // Don't attach yet - only when smart mode is enabled
+    }
+
+    getVideoIdFromUrl(url) {
+        const match = url.match(/\/video\/([^\/]+)\/edit/);
+        return match ? match[1] : null;
+    }
+
+    updateTabCounter() {
+        const closeBtn = document.getElementById('ysve-close-all-tabs');
+        if (closeBtn) {
+            const count = this.openTabs.size;
+            closeBtn.disabled = count === 0;
+            closeBtn.querySelector('.ysve-tab-count').textContent = `(${count})`;
+            
+            if (count > 0) {
+                closeBtn.style.background = 'linear-gradient(135deg, #ff9800, #f57c00)';
+            } else {
+                closeBtn.style.background = 'linear-gradient(135deg, #757575, #616161)';
+            }
+        }
     }
 
     toggleSmartClickMode() {
@@ -376,7 +405,7 @@ class BulkTabManager {
             // Change cursor for video links
             this.addSmartClickStyles();
             
-            this.showTemporaryMessage('🎯 Smart Click Mode: ON - Links open in new tabs', 3000);
+            this.showTemporaryMessage('🎯 Smart Click Mode: ON - Background tabs, stay in list', 3000);
             
         } else {
             // Disable smart click mode
@@ -401,7 +430,7 @@ class BulkTabManager {
             }
             
             .ysve-smart-click-active a[href*="/video/"][href*="/edit"]:hover::after {
-                content: "🎯 New Tab";
+                content: "🎯 Background Tab";
                 position: absolute;
                 top: -30px;
                 left: 50%;
@@ -429,23 +458,26 @@ class BulkTabManager {
         document.body.classList.remove('ysve-smart-click-active');
     }
 
-    showClickFeedback(element) {
-        // Brief visual feedback for smart clicks
+    showClickFeedback(element, tabCount) {
+        // Brief visual feedback for smart clicks with tab count
         const feedback = document.createElement('div');
         feedback.style.cssText = `
             position: fixed;
             top: ${element.getBoundingClientRect().top}px;
             left: ${element.getBoundingClientRect().left}px;
-            background: rgba(33, 150, 243, 0.9);
+            background: rgba(33, 150, 243, 0.95);
             color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
             z-index: 10000;
             pointer-events: none;
-            animation: ysve-click-feedback 1s ease-out forwards;
+            animation: ysve-click-feedback 1.5s ease-out forwards;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.3);
+            font-weight: 600;
         `;
-        feedback.textContent = '🎯 New Tab';
+        feedback.textContent = `🎯 Tab ${tabCount} opened`;
         
         // Add animation keyframes if not exists
         if (!document.getElementById('ysve-click-feedback-animation')) {
@@ -454,14 +486,15 @@ class BulkTabManager {
             animationStyle.textContent = `
                 @keyframes ysve-click-feedback {
                     0% { opacity: 1; transform: scale(1); }
-                    100% { opacity: 0; transform: scale(1.2) translateY(-10px); }
+                    50% { opacity: 1; transform: scale(1.1); }
+                    100% { opacity: 0; transform: scale(1.2) translateY(-15px); }
                 }
             `;
             document.head.appendChild(animationStyle);
         }
         
         document.body.appendChild(feedback);
-        setTimeout(() => feedback.remove(), 1000);
+        setTimeout(() => feedback.remove(), 1500);
     }
 
     closeAllEditTabs() {
@@ -519,13 +552,7 @@ class BulkTabManager {
         
         // Clear our tracking
         this.openTabs.clear();
-        
-        // Disable close button
-        const closeBtn = document.getElementById('ysve-close-all-tabs');
-        if (closeBtn) {
-            closeBtn.disabled = true;
-            closeBtn.querySelector('.ysve-tab-count').textContent = '(0)';
-        }
+        this.updateTabCounter();
     }
 
     setupKeyboardShortcuts() {
